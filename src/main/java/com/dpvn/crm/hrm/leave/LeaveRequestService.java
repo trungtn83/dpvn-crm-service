@@ -3,10 +3,9 @@ package com.dpvn.crm.hrm.leave;
 import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crmcrudservice.domain.dto.LeaveRequestDto;
 import com.dpvn.shared.util.DateUtil;
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.util.List;
+import org.springframework.stereotype.Service;
 
 @Service
 public class LeaveRequestService {
@@ -26,8 +25,9 @@ public class LeaveRequestService {
 
   public List<LeaveRequestDto> findByUserIdsAndCurrentMonth(List<Long> userIds, String date) {
     Instant current = DateUtil.from(date, DateUtil.now());
-    return crmCrudClient.findLeaveRequestByUsersAndInMonthOfDate(userIds, DateUtil.startOfMonth(current).toString(), DateUtil.endOfMonth(current).toString());
+    return crmCrudClient.findLeaveRequestByUsersAndInMonthOfDate(
+        userIds,
+        DateUtil.startOfMonth(current).toString(),
+        DateUtil.endOfMonth(current).toString());
   }
-
-
 }

@@ -1,9 +1,8 @@
 package com.dpvn.crm.client;
 
 import com.dpvn.crmcrudservice.domain.dto.LeaveRequestDto;
-import java.util.List;
-
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
+import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,5 +26,7 @@ public interface CrmCrudClient {
 
   @GetMapping("/hrm/leave-request/find-by-users")
   List<LeaveRequestDto> findLeaveRequestByUsersAndInMonthOfDate(
-      @RequestParam(name = "userIds") List<Long> userIds, @RequestParam(name = "fromDate") String fromDate, @RequestParam(name = "toDate") String toDate);
+      @RequestParam(name = "userIds") List<Long> userIds,
+      @RequestParam(name = "fromDate") String fromDate,
+      @RequestParam(name = "toDate") String toDate);
 }
