@@ -14,6 +14,13 @@ spring:
             connectTimeout: 5000
             readTimeout: 300000
             loggerLevel: basic
+  kafka:
+    consumer:
+      group-id: crm-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
 
 logging:
   level:
@@ -31,6 +38,8 @@ spring:
     redis:
       host: localhost
       port: 6379
+  kafka:
+    bootstrap-servers: localhost:9092
 
 eureka:
   client:
@@ -50,6 +59,8 @@ spring:
     redis:
       host: dpvn-server-redis
       port: 6379
+  kafka:
+    bootstrap-servers: dpvn-kafka:9092
 
 eureka:
   client:
