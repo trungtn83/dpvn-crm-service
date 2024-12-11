@@ -20,8 +20,10 @@ import com.dpvn.shared.util.DateUtil;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.ListUtil;
 import com.dpvn.shared.util.ObjectUtil;
+import com.dpvn.shared.util.StringUtil;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -43,7 +45,7 @@ public class CustomerService {
     this.saleCustomerService = saleCustomerService;
   }
 
-  public void upsertCustomer(CustomerDto customerDto) {
+  private void validateCustomerMobilePhones(CustomerDto customerDto) {
     List<String> mobileReferenceDtos =
         customerDto.getReferences().stream()
             .filter(
@@ -51,7 +53,8 @@ public class CustomerService {
                     List.of(Customers.References.MOBILE_PHONE, Customers.References.ZALO)
                         .contains(cr.getCode()))
             .map(CustomerReferenceDto::getValue)
-            .toList();
+            .collect(Collectors.toList());
+    mobileReferenceDtos.add(customerDto.getMobilePhone());
     List<String> duplicatedMobilePhones =
         ListUtil.getDuplicates(mobileReferenceDtos, Objects::toString);
     if (ListUtil.isNotEmpty(duplicatedMobilePhones)) {
@@ -71,7 +74,73 @@ public class CustomerService {
       throw new BadRequestException(
           "DUPLICATED", "Số điện thoại đã tồn tại", ListUtil.toString(errors));
     }
+  }
+
+  public void upsertCustomer(CustomerDto customerDto) {
+    validateCustomerMobilePhones(customerDto);
     crmCrudClient.upsertCustomer(customerDto);
+  }
+
+  public void createNewCustomer(
+      Long userId, CustomerDto customerDto, SaleCustomerDto saleCustomerDto) {
+    validateCustomerMobilePhones(customerDto);
+    CustomerDto result = crmCrudClient.createNewCustomer(customerDto);
+    // auto generate code when user leave it empty
+    if (StringUtil.isEmpty(result.getCustomerCode())) {
+      CustomerDto newOne = new CustomerDto();
+      newOne.setId(result.getId());
+      newOne.setCustomerCode(String.format("KHA%09d", result.getId()));
+      result = crmCrudClient.upsertCustomer(newOne);
+    }
+    if (saleCustomerDto.getSaleId() != null) {
+      saleCustomerDto.setCustomerId(result.getId());
+      saleCustomerDto.setCustomerDto(result);
+      saleCustomerDto.setReasonRef(userId.toString());
+      saleCustomerDto.setReasonNote("Được phân công khi tạo mới khách hàng");
+      saleCustomerDto.setRelationshipType(RelationshipType.PIC);
+      saleCustomerDto.setReasonId(SaleCustomers.Reason.LEADER);
+      saleCustomerDto.setStatus(Status.ACTIVE);
+      saleCustomerService.upsertSaleCustomer(saleCustomerDto);
+    }
+  }
+
+  public void updateExistedCustomer(
+      Long userId, CustomerDto customerDto, SaleCustomerDto saleCustomerDto) {
+    Long customerId = customerDto.getId();
+    CustomerDto existedCustomer = crmCrudClient.findCustomerById(customerId);
+    if (existedCustomer == null) {
+      throw new BadRequestException(String.format("Customer with id %s not found", customerId));
+    }
+    if (StringUtil.isEmpty(customerDto.getCustomerCode())
+        || !customerDto.getCustomerCode().equals(existedCustomer.getCustomerCode())) {
+      throw new BadRequestException(
+          String.format("Customer code %s is not valid", customerDto.getCustomerCode()));
+    }
+    if (StringUtil.isEmpty(customerDto.getMobilePhone())
+        || !customerDto.getMobilePhone().equals(existedCustomer.getMobilePhone())) {
+      throw new BadRequestException(
+          String.format("Mobile phone %s is not valid", customerDto.getMobilePhone()));
+    }
+
+    validateCustomerMobilePhones(customerDto);
+    CustomerDto newOne = crmCrudClient.updateExistedCustomer(customerDto);
+
+    SaleCustomerDto existedSaleCustomer =
+        saleCustomerService.findSaleCustomerByReason(
+            null, customerDto.getId(), RelationshipType.PIC, SaleCustomers.Reason.LEADER, null);
+    if (existedSaleCustomer != null) {
+      crmCrudClient.deleteSaleCustomer(existedSaleCustomer.getId());
+    }
+    if (saleCustomerDto.getSaleId() != null) {
+      saleCustomerDto.setCustomerId(customerId);
+      saleCustomerDto.setCustomerDto(newOne);
+      saleCustomerDto.setReasonRef(userId.toString());
+      saleCustomerDto.setReasonNote("Được phân công khi cập nhật khách hàng");
+      saleCustomerDto.setRelationshipType(RelationshipType.PIC);
+      saleCustomerDto.setReasonId(SaleCustomers.Reason.LEADER);
+      saleCustomerDto.setStatus(Status.ACTIVE);
+      saleCustomerService.upsertSaleCustomer(saleCustomerDto);
+    }
   }
 
   private SaleCustomerDto initSaleCustomerDto(Long customerId) {
@@ -82,7 +151,10 @@ public class CustomerService {
     return saleCustomerDto;
   }
 
-  public FastMap findCustomer(Long userId, Long customerId) {
+  public CustomerDto findCustomerById(Long id) {
+    return crmCrudClient.findCustomerById(id);
+  }
+  public FastMap findCustomerOfSale(Long userId, Long customerId) {
     FastMap condition =
         FastMap.create().add("saleId", userId).add("customerIds", List.of(customerId));
     List<SaleCustomerDto> saleCustomerDtos =
@@ -228,7 +300,7 @@ public class CustomerService {
       newCustomerDto.setSourceId(Customers.Source.KIOTVIET);
       newCustomerDto.setCreatedBy(saleId);
       newCustomerDto.setModifiedBy(saleId);
-      return crmCrudClient.createCustomer(newCustomerDto);
+      return crmCrudClient.createNewCustomer(newCustomerDto);
     } else {
       return customerDto.get(0);
     }

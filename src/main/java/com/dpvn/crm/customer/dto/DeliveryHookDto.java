@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class DeliveryHookDto {
   @JsonProperty("Status")
   private Integer status;
+
   @JsonProperty("ContactNumber")
   private String contactNumber;
 

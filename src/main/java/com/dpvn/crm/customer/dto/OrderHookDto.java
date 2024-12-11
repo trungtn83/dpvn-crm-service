@@ -9,20 +9,28 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class OrderHookDto {
   @JsonProperty("Id")
   private Long id;
+
   @JsonProperty("Code")
   private String code;
+
   @JsonProperty("PurchaseDate")
   private String purchaseDate;
+
   @JsonProperty("SoldById")
   private Long soldById;
+
   @JsonProperty("CustomerId")
   private Long customerId;
+
   @JsonProperty("CustomerCode")
   private String customerCode;
+
   @JsonProperty("Status")
   private Integer status;
+
   @JsonProperty("StatusValue")
   private String statusValue;
+
   @JsonProperty("OrderDelivery")
   private DeliveryHookDto orderDelivery;
 

@@ -2,7 +2,6 @@ package com.dpvn.crm.task;
 
 import com.dpvn.crmcrudservice.domain.dto.TaskDto;
 import java.util.List;
-
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,7 +41,8 @@ public class TaskController {
   }
 
   @DeleteMapping("/{id}")
-  public void deleteTask(@RequestHeader("x-user-id") Long loginUserId, @PathVariable("id") Long id) {
+  public void deleteTask(
+      @RequestHeader("x-user-id") Long loginUserId, @PathVariable("id") Long id) {
     taskService.deleteTask(loginUserId, id);
   }
 }

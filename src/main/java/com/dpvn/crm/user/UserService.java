@@ -4,6 +4,7 @@ import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crm.client.ReportCrudClient;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
 import com.dpvn.reportcrudservice.domain.dto.kiotviet.KvUserDto;
+import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.ObjectUtil;
 import java.util.ArrayList;
 import java.util.List;
@@ -66,5 +67,13 @@ public class UserService {
   public UserDto findUserByKvUserId(Long kvUserId) {
     KvUserDto kvUserDto = reportCrudClient.findKvUserById(kvUserId);
     return crmCrudClient.getCrmUserByUserName(kvUserDto.getUsername());
+  }
+
+  public List<UserDto> findUsersByOptions(UserDto userDto) {
+    return crmCrudClient.findUsersByOptions(userDto);
+  }
+
+  public FastMap searchUsers(FastMap condition) {
+    return crmCrudClient.searchUsers(condition);
   }
 }

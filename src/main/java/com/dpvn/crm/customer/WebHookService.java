@@ -12,7 +12,6 @@ import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
 import com.dpvn.reportcrudservice.domain.constant.KvStatus;
-import com.dpvn.reportcrudservice.domain.dto.LogDto;
 import com.dpvn.shared.exception.BadRequestException;
 import com.dpvn.shared.util.DateUtil;
 import com.dpvn.shared.util.ListUtil;
@@ -93,13 +92,13 @@ public class WebHookService {
         || ListUtil.isEmpty(payloadDto.getNotifications())
         || payloadDto.getNotifications().stream()
             .anyMatch(notification -> ListUtil.isEmpty(notification.getData()))) {
-//      LogDto logDto = new LogDto();
-//      logDto.setCreatedBy(-1L);
-//      logDto.setAction("WEB-HOOK");
-//      logDto.setFunction(type);
-//      logDto.setSource(payload);
-//      logDto.setDescription(String.format("Received %s payload in mal-format", type));
-//      reportCrudClient.createLog(logDto);
+      //      LogDto logDto = new LogDto();
+      //      logDto.setCreatedBy(-1L);
+      //      logDto.setAction("WEB-HOOK");
+      //      logDto.setFunction(type);
+      //      logDto.setSource(payload);
+      //      logDto.setDescription(String.format("Received %s payload in mal-format", type));
+      //      reportCrudClient.createLog(logDto);
       LOG.error("Received {} payload in mal-format", type);
 
       throw new BadRequestException("Invalid payload");
@@ -208,7 +207,8 @@ public class WebHookService {
       saleCustomerDto.setAvailableFrom(DateUtil.now());
       saleCustomerDto.setAvailableTo(DateUtil.now().plus(7, ChronoUnit.DAYS));
       saleCustomerService.upsertSaleCustomer(saleCustomerDto);
-      LOG.info("Sale customer [{}, {}] for ORDER code {} existed, process update", sale, customer, code);
+      LOG.info(
+          "Sale customer [{}, {}] for ORDER code {} existed, process update", sale, customer, code);
       return;
     }
 
@@ -217,11 +217,18 @@ public class WebHookService {
       saleCustomerService.upsertSaleCustomer(
           generateAssignCustomerToSaleWithTypeInDays(
               sale.getId(), customer.getId(), SaleCustomers.Reason.ORDER, code, 7));
-      LOG.info("Sale customer [{}, {}] for ORDER code {} does not exist, create the new one for 7 days", sale, customer, code);
+      LOG.info(
+          "Sale customer [{}, {}] for ORDER code {} does not exist, create the new one for 7 days",
+          sale,
+          customer,
+          code);
       return;
     }
 
-    LOG.info("Sale customer [{}, {}] is old customer, temp ORDER does not affect to current relationship", sale, customer);
+    LOG.info(
+        "Sale customer [{}, {}] is old customer, temp ORDER does not affect to current relationship",
+        sale,
+        customer);
   }
 
   /** Khi tạo ra confirmed order: tạo record mới cho sale với khách đó trong 3 tháng */

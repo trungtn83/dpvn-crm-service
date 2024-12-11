@@ -4,9 +4,8 @@ import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerCategoryDto;
 import com.dpvn.shared.exception.BadRequestException;
 import com.dpvn.shared.util.ListUtil;
-import org.springframework.stereotype.Service;
-
 import java.util.List;
+import org.springframework.stereotype.Service;
 
 @Service
 public class SaleCustomerCategoryService {
@@ -16,15 +15,20 @@ public class SaleCustomerCategoryService {
     this.crmCrudClient = crmCrudClient;
   }
 
-  public List<SaleCustomerCategoryDto> findSaleCustomerCategoriesByOptions(Long saleId, String code) {
+  public List<SaleCustomerCategoryDto> findSaleCustomerCategoriesByOptions(
+      Long saleId, String code) {
     return crmCrudClient.findSaleCustomerCategoriesByOptions(saleId, code);
   }
 
   public void upsertSaleCustomerCategory(SaleCustomerCategoryDto saleCustomerCategoryDto) {
     if (saleCustomerCategoryDto.getId() == null) {
-      List<SaleCustomerCategoryDto> saleCustomerCategoryDtos = crmCrudClient.findSaleCustomerCategoriesByOptions(saleCustomerCategoryDto.getSaleId(), saleCustomerCategoryDto.getCode());
+      List<SaleCustomerCategoryDto> saleCustomerCategoryDtos =
+          crmCrudClient.findSaleCustomerCategoriesByOptions(
+              saleCustomerCategoryDto.getSaleId(), saleCustomerCategoryDto.getCode());
       if (ListUtil.isNotEmpty(saleCustomerCategoryDtos)) {
-        throw new BadRequestException("EXISTED", String.format("Category code %s existed", saleCustomerCategoryDto.getCode()));
+        throw new BadRequestException(
+            "EXISTED",
+            String.format("Category code %s existed", saleCustomerCategoryDto.getCode()));
       }
     }
     crmCrudClient.upsertSaleCustomerCategory(saleCustomerCategoryDto);
@@ -34,5 +38,4 @@ public class SaleCustomerCategoryService {
     // TODO: check if id is belong to saleId
     crmCrudClient.deleteSaleCustomerCategory(id);
   }
-
 }

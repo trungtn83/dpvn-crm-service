@@ -3,7 +3,6 @@ package com.dpvn.crm.customer.dto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -11,8 +10,10 @@ import java.util.List;
 public class PayloadDto<T> {
   @JsonProperty("Id")
   private String id;
+
   @JsonProperty("Attempt")
   private Integer attempt;
+
   @JsonProperty("Notifications")
   private List<Notification<T>> notifications;
 
@@ -43,6 +44,7 @@ public class PayloadDto<T> {
   public static class Notification<T> {
     @JsonProperty("Action")
     private String action;
+
     @JsonProperty("Data")
     private List<T> data;
 
@@ -62,5 +64,4 @@ public class PayloadDto<T> {
       this.data = data;
     }
   }
-
 }
