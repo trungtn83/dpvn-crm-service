@@ -1,6 +1,5 @@
 package com.dpvn.crm.client;
 
-import com.dpvn.crmcrudservice.domain.dto.AddressDto;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.InteractionDto;
 import com.dpvn.crmcrudservice.domain.dto.LeaveRequestDto;
@@ -9,6 +8,7 @@ import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerStateDto;
 import com.dpvn.crmcrudservice.domain.dto.TaskDto;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
+import com.dpvn.shared.domain.dto.AddressDto;
 import com.dpvn.shared.util.FastMap;
 import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;

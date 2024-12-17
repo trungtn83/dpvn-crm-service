@@ -154,6 +154,7 @@ public class CustomerService {
   public CustomerDto findCustomerById(Long id) {
     return crmCrudClient.findCustomerById(id);
   }
+
   public FastMap findCustomerOfSale(Long userId, Long customerId) {
     FastMap condition =
         FastMap.create().add("saleId", userId).add("customerIds", List.of(customerId));

@@ -1,7 +1,7 @@
 package com.dpvn.crm.address;
 
 import com.dpvn.crm.client.CrmCrudClient;
-import com.dpvn.crmcrudservice.domain.dto.AddressDto;
+import com.dpvn.shared.domain.dto.AddressDto;
 import java.util.List;
 import org.springframework.stereotype.Service;
 

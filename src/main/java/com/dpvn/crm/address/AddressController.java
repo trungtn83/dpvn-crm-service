@@ -1,6 +1,6 @@
 package com.dpvn.crm.address;
 
-import com.dpvn.crmcrudservice.domain.dto.AddressDto;
+import com.dpvn.shared.domain.dto.AddressDto;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

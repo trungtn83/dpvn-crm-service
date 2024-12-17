@@ -43,7 +43,8 @@ public class CustomerController {
   }
 
   @GetMapping("/{id}/of-sale")
-  public FastMap getCustomerOfSale(@RequestHeader("x-user-id") Long loginUserId, @PathVariable Long id) {
+  public FastMap getCustomerOfSale(
+      @RequestHeader("x-user-id") Long loginUserId, @PathVariable Long id) {
     return customerService.findCustomerOfSale(loginUserId, id);
   }
 
