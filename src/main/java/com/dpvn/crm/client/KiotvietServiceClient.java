@@ -1,6 +1,6 @@
 package com.dpvn.crm.client;
 
-import com.dpvn.reportcrudservice.domain.dto.kiotviet.KvCustomerDto;
+import com.dpvn.kiotviet.domain.KvCustomerDto;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

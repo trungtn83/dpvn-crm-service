@@ -3,7 +3,7 @@ package com.dpvn.crm.user;
 import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crm.client.ReportCrudClient;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
-import com.dpvn.reportcrudservice.domain.dto.kiotviet.KvUserDto;
+import com.dpvn.kiotviet.domain.KvUserDto;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.ObjectUtil;
 import java.util.ArrayList;

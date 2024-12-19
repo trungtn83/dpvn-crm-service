@@ -1,19 +1,13 @@
 package com.dpvn.crm.client;
 
-import com.dpvn.reportcrudservice.domain.dto.LogDto;
-import com.dpvn.reportcrudservice.domain.dto.kiotviet.KvCustomerDto;
-import com.dpvn.reportcrudservice.domain.dto.kiotviet.KvUserDto;
+import com.dpvn.kiotviet.domain.KvCustomerDto;
+import com.dpvn.kiotviet.domain.KvUserDto;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 
 @FeignClient(name = "report-crud-service", contextId = "report-crud-service-client")
 public interface ReportCrudClient {
-  @PostMapping("/log")
-  void createLog(@RequestBody LogDto logDtp);
-
   @GetMapping("/kiotviet/user/{id}")
   KvUserDto findKvUserById(@PathVariable("id") Long id);
 

@@ -14,7 +14,7 @@ import com.dpvn.crmcrudservice.domain.dto.InteractionDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerStateDto;
 import com.dpvn.crmcrudservice.domain.dto.TaskDto;
-import com.dpvn.reportcrudservice.domain.dto.kiotviet.KvCustomerDto;
+import com.dpvn.kiotviet.domain.KvCustomerDto;
 import com.dpvn.shared.exception.BadRequestException;
 import com.dpvn.shared.util.DateUtil;
 import com.dpvn.shared.util.FastMap;
