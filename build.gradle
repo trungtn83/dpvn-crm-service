@@ -22,8 +22,11 @@ ext {
 }
 
 dependencies {
-    implementation 'com.dpvn:dpvn-shared:0.0.1-SNAPSHOT'
+    implementation('com.dpvn:dpvn-shared:0.0.1-SNAPSHOT') {
+        exclude group : "org.springframework.boot", module : 'spring-boot-starter-data-jpa'
+    }
     implementation 'com.dpvn:dpvn-report-crud-service:0.0.1-SNAPSHOT'
+    implementation 'com.dpvn:dpvn-kiotviet-service:0.0.1-SNAPSHOT'
     implementation 'com.dpvn:dpvn-crm-crud-service:0.0.1-SNAPSHOT'
     implementation 'com.dpvn:dpvn-webhook-handler-service:0.0.1-SNAPSHOT'
 
