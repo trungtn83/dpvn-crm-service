@@ -11,6 +11,7 @@ import com.dpvn.crmcrudservice.domain.dto.UserDto;
 import com.dpvn.shared.domain.dto.AddressDto;
 import com.dpvn.shared.util.FastMap;
 import java.util.List;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +28,7 @@ public interface CrmCrudClient {
   @GetMapping("/user/{id}")
   UserDto getUserById(@PathVariable("id") Long id);
 
+  @Cacheable(value = "users", key = "#root.methodName")
   @GetMapping("/user")
   List<UserDto> getUsers();
 
@@ -68,17 +70,20 @@ public interface CrmCrudClient {
   @PostMapping("/customer")
   CustomerDto createNewCustomer(@RequestBody CustomerDto dto);
 
-  @PutMapping("/customer")
-  CustomerDto updateExistedCustomer(@RequestBody CustomerDto dto);
+  @PutMapping("/customer/{id}")
+  CustomerDto updateExistedCustomer(@PathVariable("id") Long id, @RequestBody CustomerDto dto);
 
   @PostMapping("/customer/upsert")
   CustomerDto upsertCustomer(@RequestBody CustomerDto dto);
 
-  @PostMapping("/customer/search")
-  List<CustomerDto> searchCustomers(@RequestBody FastMap conditions);
-
   @GetMapping("/customer/find-by-mobile-phone")
   List<CustomerDto> findCustomersByMobilePhone(@RequestParam String mobilePhone);
+
+  @GetMapping("/customer/find-by-status")
+  List<CustomerDto> findByStatus(
+      @RequestParam(value = "status", required = false) String status,
+      @RequestParam(value = "page", required = false, defaultValue = "0") Integer page,
+      @RequestParam(value = "pageSize", required = false, defaultValue = "100") Integer pageSize);
 
   /** saleId customerCategoryId filterText reasonIds sourceIds page pageSize */
   @PostMapping("/customer/my")

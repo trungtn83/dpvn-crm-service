@@ -23,8 +23,7 @@ public class UserService {
   }
 
   public List<UserDto> getByUser(Long userId) {
-    List<UserDto> userDtos =
-        crmCrudClient.getUsers().stream().filter(ud -> ud.getStatus() == 1).toList();
+    List<UserDto> userDtos = crmCrudClient.getUsers().stream().filter(UserDto::getActive).toList();
     UserDto user =
         userDtos.stream()
             .filter(userDto -> userDto.getId().equals(userId))
@@ -47,12 +46,12 @@ public class UserService {
   }
 
   private boolean isGod(UserDto userDto) {
-    return "ADMIN".equals(userDto.getRoleDto().getRoleName())
-        && "BOM".equals(userDto.getDepartmentDto().getDepartmentName());
+    return "GOD".equals(userDto.getRole().getRoleName());
   }
 
   private boolean isAdmin(UserDto userDto) {
-    return "ADMIN".equals(userDto.getRoleDto().getRoleName());
+    return "ADMIN".equals(userDto.getRole().getRoleName())
+        && "BOM".equals(userDto.getDepartment().getDepartmentName());
   }
 
   public List<UserDto> findUsersByIds(List<Long> userIds) {

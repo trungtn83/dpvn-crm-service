@@ -1,8 +1,11 @@
 package com.dpvn.crm.customer.dto;
 
+import com.dpvn.shared.util.DateTimeDeserializer;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import java.time.Instant;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -14,7 +17,8 @@ public class InvoiceHookDto {
   private String code;
 
   @JsonProperty("PurchaseDate")
-  private String purchaseDate;
+  @JsonDeserialize(using = DateTimeDeserializer.class)
+  private Instant purchaseDate;
 
   @JsonProperty("SoldById")
   private Long soldById;
@@ -50,11 +54,11 @@ public class InvoiceHookDto {
     this.code = code;
   }
 
-  public String getPurchaseDate() {
+  public Instant getPurchaseDate() {
     return purchaseDate;
   }
 
-  public void setPurchaseDate(String purchaseDate) {
+  public void setPurchaseDate(Instant purchaseDate) {
     this.purchaseDate = purchaseDate;
   }
 

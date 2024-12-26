@@ -2,11 +2,11 @@ package com.dpvn.crm.customer;
 
 import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crm.client.KiotvietServiceClient;
+import com.dpvn.crm.client.WmsCrudClient;
 import com.dpvn.crmcrudservice.domain.constant.Customers;
 import com.dpvn.crmcrudservice.domain.constant.Genders;
 import com.dpvn.crmcrudservice.domain.constant.RelationshipType;
 import com.dpvn.crmcrudservice.domain.constant.SaleCustomers;
-import com.dpvn.crmcrudservice.domain.constant.Status;
 import com.dpvn.crmcrudservice.domain.constant.Visibility;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.CustomerReferenceDto;
@@ -14,35 +14,44 @@ import com.dpvn.crmcrudservice.domain.dto.InteractionDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerStateDto;
 import com.dpvn.crmcrudservice.domain.dto.TaskDto;
+import com.dpvn.crmcrudservice.domain.dto.UserDto;
 import com.dpvn.kiotviet.domain.KvCustomerDto;
+import com.dpvn.shared.domain.constant.Globals;
 import com.dpvn.shared.exception.BadRequestException;
+import com.dpvn.shared.service.AbstractService;
 import com.dpvn.shared.util.DateUtil;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.ListUtil;
 import com.dpvn.shared.util.ObjectUtil;
 import com.dpvn.shared.util.StringUtil;
+import com.dpvn.wmscrudservice.domain.constant.Invoices;
+import com.dpvn.wmscrudservice.domain.constant.Orders;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
-public class CustomerService {
-  private static final Logger LOG = LoggerFactory.getLogger(CustomerService.class);
-
+public class CustomerService extends AbstractService {
   private final CrmCrudClient crmCrudClient;
   private final KiotvietServiceClient kiotvietServiceClient;
   private final SaleCustomerService saleCustomerService;
+  private final WmsCrudClient wmsCrudClient;
+  private final WebHookHandlerService webHookHandlerService;
 
   public CustomerService(
       CrmCrudClient crmCrudClient,
       KiotvietServiceClient kiotvietServiceClient,
-      SaleCustomerService saleCustomerService) {
+      SaleCustomerService saleCustomerService,
+      WmsCrudClient wmsCrudClient,
+      WebHookHandlerService webHookHandlerService) {
     this.crmCrudClient = crmCrudClient;
     this.kiotvietServiceClient = kiotvietServiceClient;
     this.saleCustomerService = saleCustomerService;
+    this.wmsCrudClient = wmsCrudClient;
+    this.webHookHandlerService = webHookHandlerService;
   }
 
   private void validateCustomerMobilePhones(CustomerDto customerDto) {
@@ -99,7 +108,7 @@ public class CustomerService {
       saleCustomerDto.setReasonNote("Được phân công khi tạo mới khách hàng");
       saleCustomerDto.setRelationshipType(RelationshipType.PIC);
       saleCustomerDto.setReasonId(SaleCustomers.Reason.LEADER);
-      saleCustomerDto.setStatus(Status.ACTIVE);
+      saleCustomerDto.setActive(Boolean.TRUE);
       saleCustomerService.upsertSaleCustomer(saleCustomerDto);
     }
   }
@@ -123,7 +132,7 @@ public class CustomerService {
     }
 
     validateCustomerMobilePhones(customerDto);
-    CustomerDto newOne = crmCrudClient.updateExistedCustomer(customerDto);
+    CustomerDto newOne = crmCrudClient.updateExistedCustomer(customerId, customerDto);
 
     SaleCustomerDto existedSaleCustomer =
         saleCustomerService.findSaleCustomerByReason(
@@ -138,7 +147,7 @@ public class CustomerService {
       saleCustomerDto.setReasonNote("Được phân công khi cập nhật khách hàng");
       saleCustomerDto.setRelationshipType(RelationshipType.PIC);
       saleCustomerDto.setReasonId(SaleCustomers.Reason.LEADER);
-      saleCustomerDto.setStatus(Status.ACTIVE);
+      saleCustomerDto.setActive(Boolean.TRUE);
       saleCustomerService.upsertSaleCustomer(saleCustomerDto);
     }
   }
@@ -290,7 +299,7 @@ public class CustomerService {
     if (ListUtil.isEmpty(customerDto)) {
       // create new Customer here
       CustomerDto newCustomerDto = new CustomerDto();
-      newCustomerDto.setCustomerId(kvCustomerDto.getId().toString());
+      newCustomerDto.setIdf(kvCustomerDto.getId());
       newCustomerDto.setCustomerCode(kvCustomerDto.getCode());
       newCustomerDto.setCustomerName(kvCustomerDto.getName());
       newCustomerDto.setGender(
@@ -307,17 +316,6 @@ public class CustomerService {
     }
   }
 
-  public boolean isOldCustomer(Long saleId, Long customerId) {
-    FastMap condition = FastMap.create().add("saleId", saleId).add("customerId", customerId);
-    List<SaleCustomerDto> saleCustomerDtos = crmCrudClient.findSaleCustomersByOptions(condition);
-    if (ListUtil.isEmpty(saleCustomerDtos)) {
-      return false;
-    }
-    SaleCustomerDto mySaleCustomerDto = saleCustomerDtos.get(0);
-    return mySaleCustomerDto.getRelationshipType() == RelationshipType.PIC
-        && mySaleCustomerDto.getReasonId() == SaleCustomers.Reason.ORDER;
-  }
-
   public void doActionCustomer(Long saleId, Long customerId, Integer reasonId, boolean flag) {
     SaleCustomerDto saleCustomerDto =
         saleCustomerService.findSaleCustomerByReason(
@@ -329,7 +327,7 @@ public class CustomerService {
         newSaleCustomerDto.setCustomerId(customerId);
         newSaleCustomerDto.setRelationshipType(RelationshipType.INVOLVED);
         newSaleCustomerDto.setReasonId(reasonId);
-        newSaleCustomerDto.setStatus(Status.ACTIVE);
+        newSaleCustomerDto.setActive(Boolean.TRUE);
         saleCustomerService.upsertSaleCustomer(newSaleCustomerDto);
       }
     } else {
@@ -337,5 +335,87 @@ public class CustomerService {
         saleCustomerService.removeSaleCustomerByReason(saleId, customerId, reasonId, null);
       }
     }
+  }
+
+  public void initRelationship() {
+    int page = 0;
+    while (true) {
+      List<CustomerDto> customerDtos =
+          crmCrudClient.findByStatus(null, page, Globals.Paging.FETCHING_PAGE_SIZE);
+      if (ListUtil.isEmpty(customerDtos)) {
+        return;
+      }
+      List<Long> idfs = customerDtos.stream().map(CustomerDto::getIdf).toList();
+      List<FastMap> lastTempOrders = findLastOrderOfCustomerByStatus(Orders.Status.TEMP, idfs);
+      List<FastMap> lastConfirmedOrders =
+          findLastOrderOfCustomerByStatus(Orders.Status.CONFIRMED, idfs);
+      List<FastMap> lastInProgressInvoices =
+          findLastInvoiceOfCustomerByStatus(Invoices.Status.DELIVERING, idfs);
+      List<FastMap> lastCompletedInvoices =
+          findLastInvoiceOfCustomerByStatus(Invoices.Status.COMPLETED, idfs);
+      Map<Long, UserDto> sellers =
+          crmCrudClient.getUsers().stream().collect(Collectors.toMap(UserDto::getIdf, u -> u));
+      customerDtos.forEach(
+          customerDto -> {
+            lastTempOrders.forEach(
+                tempOrder -> {
+                  UserDto userDto = sellers.get(tempOrder.getLong("sellerId"));
+                  String orderCode = tempOrder.getString("orderCode");
+                  Instant purchaseDate = tempOrder.getInstant("purchaseDate");
+                  webHookHandlerService.handleTempOrder(
+                      userDto, customerDto, orderCode, purchaseDate);
+                });
+            lastConfirmedOrders.forEach(
+                confirmedOrder -> {
+                  UserDto userDto = sellers.get(confirmedOrder.getLong("sellerId"));
+                  String orderCode = confirmedOrder.getString("orderCode");
+                  Instant purchaseDate = confirmedOrder.getInstant("purchaseDate");
+                  webHookHandlerService.handleConfirmedOrder(
+                      userDto, customerDto, orderCode, purchaseDate);
+                });
+            lastInProgressInvoices.forEach(
+                inProgressInvoice -> {
+                  UserDto userDto = sellers.get(inProgressInvoice.getLong("sellerId"));
+                  String invoiceCode = inProgressInvoice.getString("invoiceCode");
+                  Instant purchaseDate = inProgressInvoice.getInstant("purchaseDate");
+                  webHookHandlerService.handleInProgressInvoice(
+                      userDto, customerDto, invoiceCode, purchaseDate);
+                });
+            lastCompletedInvoices.forEach(
+                completedInvoice -> {
+                  UserDto userDto = sellers.get(completedInvoice.getLong("sellerId"));
+                  String invoiceCode = completedInvoice.getString("invoiceCode");
+                  Instant purchaseDate = completedInvoice.getInstant("purchaseDate");
+                  webHookHandlerService.handleCompletedInvoice(
+                      userDto, customerDto, invoiceCode, purchaseDate);
+                });
+
+            updateCustomerStatus(
+                customerDto.getId(), customerDto.getIdf(), Customers.Status.ASSIGNED);
+            LOGGER.info("Initialized relationship for customer {}", customerDto.getCustomerName());
+          });
+      page++;
+      if (customerDtos.size() < Globals.Paging.FETCHING_PAGE_SIZE) {
+        return;
+      }
+    }
+  }
+
+  private void updateCustomerStatus(Long id, Long idf, String status) {
+    CustomerDto customerDto = new CustomerDto();
+    customerDto.setId(id);
+    customerDto.setIdf(idf);
+    customerDto.setStatus(status);
+    crmCrudClient.upsertCustomer(customerDto);
+  }
+
+  private List<FastMap> findLastOrderOfCustomerByStatus(String status, List<Long> customerIds) {
+    return wmsCrudClient.findLastPurchaseOrderByStatusAndCustomers(
+        FastMap.create().add("status", status).add("customerIds", customerIds));
+  }
+
+  private List<FastMap> findLastInvoiceOfCustomerByStatus(String status, List<Long> customerIds) {
+    return wmsCrudClient.findLastPurchaseInvoiceByStatusAndCustomers(
+        FastMap.create().add("status", status).add("customerIds", customerIds));
   }
 }

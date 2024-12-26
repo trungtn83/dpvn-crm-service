@@ -211,7 +211,7 @@ public class CustomerController {
     customerDto.setPinCode(body.getString("pinCode"));
     customerDto.setCustomerTypeId(body.getInt("customerTypeId"));
     customerDto.setSourceId(body.getInt("sourceId"));
-    customerDto.setCustomerId(body.getString("customerId"));
+    customerDto.setIdf(body.getLong("customerId"));
     List<CustomerReferenceDto> references = new ArrayList<>();
     List<String> mobilePhones = body.getList("mobilePhones");
     if (ListUtil.isNotEmpty(mobilePhones)) {
@@ -321,5 +321,12 @@ public class CustomerController {
   public void deleteSaleCustomerCategory(
       @RequestHeader("x-user-id") Long loginUserId, @PathVariable Long id) {
     saleCustomerCategoryService.deleteSaleCustomerCategory(loginUserId, id);
+  }
+
+  @PostMapping("/init-relationship")
+  public void initRelationship(@RequestHeader("x-user-id") Long loginUserId) {
+    // TODO: need to check is GOD here
+    System.out.println("init-relationship by " + loginUserId);
+    customerService.initRelationship();
   }
 }
