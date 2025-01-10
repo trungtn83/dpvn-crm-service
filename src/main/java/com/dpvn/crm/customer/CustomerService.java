@@ -4,7 +4,6 @@ import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crm.client.KiotvietServiceClient;
 import com.dpvn.crm.client.WmsCrudClient;
 import com.dpvn.crmcrudservice.domain.constant.Customers;
-import com.dpvn.crmcrudservice.domain.constant.Genders;
 import com.dpvn.crmcrudservice.domain.constant.RelationshipType;
 import com.dpvn.crmcrudservice.domain.constant.SaleCustomers;
 import com.dpvn.crmcrudservice.domain.constant.Visibility;
@@ -93,6 +92,8 @@ public class CustomerService extends AbstractService {
   public void createNewCustomer(
       Long userId, CustomerDto customerDto, SaleCustomerDto saleCustomerDto) {
     validateCustomerMobilePhones(customerDto);
+    customerDto.setActive(true);
+    customerDto.setStatus(Customers.Status.APPROVED);
     CustomerDto result = crmCrudClient.createNewCustomer(customerDto);
     // auto generate code when user leave it empty
     if (StringUtil.isEmpty(result.getCustomerCode())) {
@@ -238,6 +239,10 @@ public class CustomerService extends AbstractService {
     return crmCrudClient.findInPoolCustomers(condition);
   }
 
+  public FastMap findInOceanCustomers(FastMap condition) {
+    return crmCrudClient.findInOceanCustomers(condition);
+  }
+
   public FastMap findTaskBasedCustomers(FastMap condition) {
     return crmCrudClient.findTaskBasedCustomers(condition);
   }
@@ -288,32 +293,8 @@ public class CustomerService extends AbstractService {
     crmCrudClient.updateLastTransaction(customerId, body);
   }
 
-  public CustomerDto findCustomerByKvCustomerId(Long saleId, Long kvCustomerId) {
-    KvCustomerDto kvCustomerDto = kiotvietServiceClient.findKvCustomerById(kvCustomerId);
-    return findOrCreateCustomerByMobilePhone(saleId, kvCustomerDto);
-  }
-
-  private CustomerDto findOrCreateCustomerByMobilePhone(Long saleId, KvCustomerDto kvCustomerDto) {
-    String mobilePhone = kvCustomerDto.getContactNumber();
-    List<CustomerDto> customerDto = crmCrudClient.findCustomersByMobilePhone(mobilePhone);
-    if (ListUtil.isEmpty(customerDto)) {
-      // create new Customer here
-      CustomerDto newCustomerDto = new CustomerDto();
-      newCustomerDto.setIdf(kvCustomerDto.getId());
-      newCustomerDto.setCustomerCode(kvCustomerDto.getCode());
-      newCustomerDto.setCustomerName(kvCustomerDto.getName());
-      newCustomerDto.setGender(
-          Objects.equals(kvCustomerDto.getGender(), Boolean.TRUE) ? Genders.MALE : Genders.FEMALE);
-      newCustomerDto.setMobilePhone(mobilePhone);
-      newCustomerDto.setAddress(kvCustomerDto.getAddress());
-      newCustomerDto.setLevelPoint(kvCustomerDto.getRewardPoint().intValue());
-      newCustomerDto.setSourceId(Customers.Source.KIOTVIET);
-      newCustomerDto.setCreatedBy(saleId);
-      newCustomerDto.setModifiedBy(saleId);
-      return crmCrudClient.createNewCustomer(newCustomerDto);
-    } else {
-      return customerDto.get(0);
-    }
+  public CustomerDto findCustomerByKvCustomerId(Long kvCustomerId) {
+    return crmCrudClient.findCustomerByIdf(kvCustomerId);
   }
 
   public void doActionCustomer(Long saleId, Long customerId, Integer reasonId, boolean flag) {
@@ -341,7 +322,7 @@ public class CustomerService extends AbstractService {
     int page = 0;
     while (true) {
       List<CustomerDto> customerDtos =
-          crmCrudClient.findByStatus(null, page, Globals.Paging.FETCHING_PAGE_SIZE);
+          crmCrudClient.findByStatusForInitRelationship(page, Globals.Paging.FETCHING_PAGE_SIZE);
       if (ListUtil.isEmpty(customerDtos)) {
         return;
       }
@@ -357,41 +338,57 @@ public class CustomerService extends AbstractService {
           crmCrudClient.getUsers().stream().collect(Collectors.toMap(UserDto::getIdf, u -> u));
       customerDtos.forEach(
           customerDto -> {
-            lastTempOrders.forEach(
-                tempOrder -> {
-                  UserDto userDto = sellers.get(tempOrder.getLong("sellerId"));
-                  String orderCode = tempOrder.getString("orderCode");
-                  Instant purchaseDate = tempOrder.getInstant("purchaseDate");
-                  webHookHandlerService.handleTempOrder(
-                      userDto, customerDto, orderCode, purchaseDate);
-                });
-            lastConfirmedOrders.forEach(
-                confirmedOrder -> {
-                  UserDto userDto = sellers.get(confirmedOrder.getLong("sellerId"));
-                  String orderCode = confirmedOrder.getString("orderCode");
-                  Instant purchaseDate = confirmedOrder.getInstant("purchaseDate");
-                  webHookHandlerService.handleConfirmedOrder(
-                      userDto, customerDto, orderCode, purchaseDate);
-                });
-            lastInProgressInvoices.forEach(
-                inProgressInvoice -> {
-                  UserDto userDto = sellers.get(inProgressInvoice.getLong("sellerId"));
-                  String invoiceCode = inProgressInvoice.getString("invoiceCode");
-                  Instant purchaseDate = inProgressInvoice.getInstant("purchaseDate");
-                  webHookHandlerService.handleInProgressInvoice(
-                      userDto, customerDto, invoiceCode, purchaseDate);
-                });
-            lastCompletedInvoices.forEach(
-                completedInvoice -> {
-                  UserDto userDto = sellers.get(completedInvoice.getLong("sellerId"));
-                  String invoiceCode = completedInvoice.getString("invoiceCode");
-                  Instant purchaseDate = completedInvoice.getInstant("purchaseDate");
-                  webHookHandlerService.handleCompletedInvoice(
-                      userDto, customerDto, invoiceCode, purchaseDate);
-                });
+            lastTempOrders.stream()
+                .filter(o -> o.getLong("customerId").equals(customerDto.getIdf()))
+                .forEach(
+                    tempOrder -> {
+                      UserDto userDto = sellers.get(tempOrder.getLong("sellerId"));
+                      if (userDto != null) { // TODO: some case user is deleted, DO NOT KNOW WHY?
+                        String orderCode = tempOrder.getString("orderCode");
+                        Instant purchaseDate = tempOrder.getInstant("purchaseDate");
+                        webHookHandlerService.handleTempOrder(
+                            userDto, customerDto, orderCode, purchaseDate);
+                      }
+                    });
+            lastConfirmedOrders.stream()
+                .filter(o -> o.getLong("customerId").equals(customerDto.getIdf()))
+                .forEach(
+                    confirmedOrder -> {
+                      UserDto userDto = sellers.get(confirmedOrder.getLong("sellerId"));
+                      if (userDto != null) {
+                        String orderCode = confirmedOrder.getString("orderCode");
+                        Instant purchaseDate = confirmedOrder.getInstant("purchaseDate");
+                        webHookHandlerService.handleConfirmedOrder(
+                            userDto, customerDto, orderCode, purchaseDate);
+                      }
+                    });
+            lastInProgressInvoices.stream()
+                .filter(i -> i.getLong("customerId").equals(customerDto.getIdf()))
+                .forEach(
+                    inProgressInvoice -> {
+                      UserDto userDto = sellers.get(inProgressInvoice.getLong("sellerId"));
+                      if (userDto != null) {
+                        String invoiceCode = inProgressInvoice.getString("invoiceCode");
+                        Instant purchaseDate = inProgressInvoice.getInstant("purchaseDate");
+                        webHookHandlerService.handleInProgressInvoice(
+                            userDto, customerDto, invoiceCode, purchaseDate);
+                      }
+                    });
+            lastCompletedInvoices.stream()
+                .filter(i -> i.getLong("customerId").equals(customerDto.getIdf()))
+                .forEach(
+                    completedInvoice -> {
+                      UserDto userDto = sellers.get(completedInvoice.getLong("sellerId"));
+                      if (userDto != null) {
+                        String invoiceCode = completedInvoice.getString("invoiceCode");
+                        Instant purchaseDate = completedInvoice.getInstant("purchaseDate");
+                        webHookHandlerService.handleCompletedInvoice(
+                            userDto, customerDto, invoiceCode, purchaseDate);
+                      }
+                    });
 
             updateCustomerStatus(
-                customerDto.getId(), customerDto.getIdf(), Customers.Status.ASSIGNED);
+                customerDto.getId(), customerDto.getIdf(), Customers.Status.APPROVED);
             LOGGER.info("Initialized relationship for customer {}", customerDto.getCustomerName());
           });
       page++;
@@ -417,5 +414,9 @@ public class CustomerService extends AbstractService {
   private List<FastMap> findLastInvoiceOfCustomerByStatus(String status, List<Long> customerIds) {
     return wmsCrudClient.findLastPurchaseInvoiceByStatusAndCustomers(
         FastMap.create().add("status", status).add("customerIds", customerIds));
+  }
+
+  public void approveFromSandToGold(Long id, FastMap body) {
+    crmCrudClient.approveCustomerFromSandToGold(id, body);
   }
 }

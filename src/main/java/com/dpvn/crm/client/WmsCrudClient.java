@@ -2,6 +2,9 @@ package com.dpvn.crm.client;
 
 import com.dpvn.shared.util.FastMap;
 import java.util.List;
+
+import com.dpvn.wmscrudservice.domain.dto.InvoiceDto;
+import com.dpvn.wmscrudservice.domain.dto.OrderDto;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,10 +18,17 @@ public interface WmsCrudClient {
   @PostMapping("/order/find-last-purchase-by-status-and-customers")
   List<FastMap> findLastPurchaseOrderByStatusAndCustomers(@RequestBody FastMap body);
 
+  @PostMapping("/order/sync-all")
+  void syncAllOrders(@RequestBody List<OrderDto> orderDtos);
+
   /**
    * @param body - status: String - customerIds: List<Long>
    * @return - customerId: Long - orderCode: String - purchaseDate: Instant - sellerId: Long
    */
   @PostMapping("/invoice/find-last-purchase-by-status-and-customers")
   List<FastMap> findLastPurchaseInvoiceByStatusAndCustomers(@RequestBody FastMap body);
+
+  @PostMapping("/invoice/sync-all")
+  void syncAllInvoices(@RequestBody List<InvoiceDto> invoiceDtos);
+
 }

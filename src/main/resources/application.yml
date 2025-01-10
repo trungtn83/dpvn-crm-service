@@ -59,7 +59,7 @@ spring:
       on-profile: production
   data:
     redis:
-      host: dpvn-server-redis
+      host: dpvn-redis
       port: 6379
   kafka:
     bootstrap-servers: dpvn-kafka:9092

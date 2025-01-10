@@ -27,14 +27,14 @@ public class WebHookHandlerService extends AbstractService {
   }
 
   public boolean isOldCustomer(Long saleId, Long customerId) {
-    FastMap condition = FastMap.create().add("saleId", saleId).add("customerId", customerId);
+    FastMap condition =
+        FastMap.create()
+            .add("saleId", saleId)
+            .add("customerIds", List.of(customerId))
+            .add("relationshipType", RelationshipType.PIC)
+            .add("reasonIds", List.of(SaleCustomers.Reason.INVOICE));
     List<SaleCustomerDto> saleCustomerDtos = crmCrudClient.findSaleCustomersByOptions(condition);
-    if (ListUtil.isEmpty(saleCustomerDtos)) {
-      return false;
-    }
-    SaleCustomerDto mySaleCustomerDto = saleCustomerDtos.get(0);
-    return mySaleCustomerDto.getRelationshipType() == RelationshipType.PIC
-        && mySaleCustomerDto.getReasonId() == SaleCustomers.Reason.ORDER;
+    return ListUtil.isNotEmpty(saleCustomerDtos);
   }
 
   /**
@@ -89,6 +89,7 @@ public class WebHookHandlerService extends AbstractService {
         saleCustomerService.findSaleCustomerByReason(
             sale.getId(), customer.getId(), null, null, code);
     if (saleCustomerDto != null) {
+      saleCustomerDto.setRelationshipType(RelationshipType.PIC);
       saleCustomerDto.setReasonId(SaleCustomers.Reason.ORDER);
       saleCustomerDto.setAvailableFrom(from);
       saleCustomerDto.setAvailableTo(to);
@@ -122,8 +123,9 @@ public class WebHookHandlerService extends AbstractService {
 
     SaleCustomerDto saleCustomerDto =
         saleCustomerService.findSaleCustomerByReason(
-            sale.getId(), customer.getId(), null, SaleCustomers.Reason.ORDER, code);
+            sale.getId(), customer.getId(), null, SaleCustomers.Reason.ORDER, null);
     if (saleCustomerDto != null) {
+      saleCustomerDto.setRelationshipType(RelationshipType.PIC);
       saleCustomerDto.setReasonId(SaleCustomers.Reason.INVOICE);
       saleCustomerDto.setReasonRef(code);
       saleCustomerDto.setAvailableFrom(from);
@@ -139,7 +141,9 @@ public class WebHookHandlerService extends AbstractService {
 
   /** Khi Invoice là completed: hình như chưa cần làm gì */
   public void handleCompletedInvoice(
-      UserDto sale, CustomerDto customer, String code, Instant purchaseDate) {}
+      UserDto sale, CustomerDto customer, String code, Instant purchaseDate) {
+    handleInProgressInvoice(sale, customer, code, purchaseDate);
+  }
 
   public void handleCancelledInvoice(UserDto sale, CustomerDto customer, String code) {
     saleCustomerService.removeSaleCustomerByReason(
@@ -158,7 +162,8 @@ public class WebHookHandlerService extends AbstractService {
         String.format("Handling: [Ref=%s, sale=%s, customer=%s]", typeRef, saleId, customerId));
     saleCustomerDto.setAvailableFrom(fromDate);
     saleCustomerDto.setAvailableTo(toDate);
-    saleCustomerDto.setActive(Boolean.TRUE);
+    saleCustomerDto.setActive(true);
+    saleCustomerDto.setDeleted(false);
     return saleCustomerDto;
   }
 }

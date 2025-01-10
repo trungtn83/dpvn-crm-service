@@ -1,6 +1,8 @@
 package com.dpvn.crm.client;
 
+import com.dpvn.crmcrudservice.domain.dto.CampaignDto;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
+import com.dpvn.crmcrudservice.domain.dto.CustomerTypeDto;
 import com.dpvn.crmcrudservice.domain.dto.InteractionDto;
 import com.dpvn.crmcrudservice.domain.dto.LeaveRequestDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerCategoryDto;
@@ -67,6 +69,9 @@ public interface CrmCrudClient {
   @GetMapping("/customer/{id}")
   CustomerDto findCustomerById(@PathVariable("id") Long id);
 
+  @GetMapping("/customer/find-by-idf/{idf}")
+  CustomerDto findCustomerByIdf(@PathVariable("idf") Long idf);
+
   @PostMapping("/customer")
   CustomerDto createNewCustomer(@RequestBody CustomerDto dto);
 
@@ -79,9 +84,8 @@ public interface CrmCrudClient {
   @GetMapping("/customer/find-by-mobile-phone")
   List<CustomerDto> findCustomersByMobilePhone(@RequestParam String mobilePhone);
 
-  @GetMapping("/customer/find-by-status")
-  List<CustomerDto> findByStatus(
-      @RequestParam(value = "status", required = false) String status,
+  @GetMapping("/customer/find-by-status-for-init")
+  List<CustomerDto> findByStatusForInitRelationship(
       @RequestParam(value = "page", required = false, defaultValue = "0") Integer page,
       @RequestParam(value = "pageSize", required = false, defaultValue = "100") Integer pageSize);
 
@@ -92,6 +96,10 @@ public interface CrmCrudClient {
   /** saleId filterText tags page pageSize */
   @PostMapping("/customer/in-pool")
   FastMap findInPoolCustomers(@RequestBody FastMap body);
+
+  /** filterText categoryIds locationIds page pageSize */
+  @PostMapping("/customer/in-ocean")
+  FastMap findInOceanCustomers(@RequestBody FastMap body);
 
   /** saleId filterText tags page pageSize */
   @PostMapping("/customer/task-based")
@@ -116,6 +124,20 @@ public interface CrmCrudClient {
   @PostMapping("/customer/{id}/update-last-transaction")
   void updateLastTransaction(@PathVariable Long id, @RequestBody FastMap body);
 
+  @PostMapping("/customer/sync-all")
+  void syncAllCustomers(List<CustomerDto> customerDtos);
+
+  @GetMapping("/customer/last-created-by-source")
+  CustomerDto findLastCreatedCustomerBySource(@RequestParam(required = false) Long sourceId);
+
+  @PostMapping("/customer/{id}/approve")
+  void approveCustomerFromSandToGold(@PathVariable Long id, @RequestBody FastMap body);
+
+  // CUSTOMER-TYPE
+  // ============================================================================================================
+  @GetMapping("/customer-type")
+  List<CustomerTypeDto> getAllCustomerTypes();
+
   // SALE-CUSTOMER
   // ============================================================================================================
   @PostMapping("/sale-customer/upsert")
@@ -139,6 +161,9 @@ public interface CrmCrudClient {
 
   @PostMapping("/sale-customer/state")
   void upsertSaleCustomerState(@RequestBody SaleCustomerStateDto body);
+
+  @GetMapping("/customer/find-last-created")
+  CustomerDto findLastCreatedCustomer(@RequestParam(value = "sourceId", required = false) Integer sourceId);
 
   // SALE-CUSTOMER-CATEGORY
   // ============================================================================================================
@@ -187,4 +212,12 @@ public interface CrmCrudClient {
   // ===========================================================================================================
   @GetMapping("/address")
   List<AddressDto> findAllAddresses();
+
+  // CAMPAIGN
+  // ===========================================================================================================
+  @GetMapping("/campaign")
+  List<CampaignDto> findAllCampaigns();
+
+  @PostMapping("/campaign/{id}/assign-customers-to-sales")
+  void assignToSaleInCampaign(@PathVariable Long id, @RequestBody FastMap body);
 }

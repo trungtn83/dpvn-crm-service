@@ -31,12 +31,12 @@ public class SaleCustomerService {
   }
 
   public SaleCustomerDto findSaleCustomerByReason(
-      Long saleId, Long customerId, Integer type, Integer reasonId, String reasonRef) {
+      Long saleId, Long customerId, Integer relationshipType, Integer reasonId, String reasonRef) {
     FastMap options =
         FastMap.create()
             .add("saleId", saleId)
             .add("customerIds", List.of(customerId))
-            .add("relationshipType", type)
+            .add("relationshipType", relationshipType)
             .add("reasonRef", reasonRef);
     if (reasonId != null) {
       options.add("reasonIds", List.of(reasonId));

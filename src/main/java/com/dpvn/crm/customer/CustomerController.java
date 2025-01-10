@@ -1,9 +1,12 @@
 package com.dpvn.crm.customer;
 
+import com.dpvn.crm.user.UserService;
 import com.dpvn.crmcrudservice.domain.constant.Customers;
 import com.dpvn.crmcrudservice.domain.constant.SaleCustomers;
+import com.dpvn.crmcrudservice.domain.dto.CustomerAddressDto;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.CustomerReferenceDto;
+import com.dpvn.crmcrudservice.domain.dto.CustomerTypeDto;
 import com.dpvn.crmcrudservice.domain.dto.InteractionDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerCategoryDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
@@ -32,14 +35,22 @@ public class CustomerController {
   private final CustomerService customerService;
   private final SaleCustomerService saleCustomerService;
   private final SaleCustomerCategoryService saleCustomerCategoryService;
+  private final UserService userService;
+  private final CustomerCraftService customerCraftService;
+  private final CustomerTypeService customerTypeService;
 
   public CustomerController(
       CustomerService customerService,
       SaleCustomerService saleCustomerService,
-      SaleCustomerCategoryService saleCustomerCategoryService) {
+      SaleCustomerCategoryService saleCustomerCategoryService,
+      UserService userService,
+      CustomerCraftService customerCraftService, CustomerTypeService customerTypeService) {
     this.customerService = customerService;
     this.saleCustomerService = saleCustomerService;
     this.saleCustomerCategoryService = saleCustomerCategoryService;
+    this.userService = userService;
+    this.customerCraftService = customerCraftService;
+    this.customerTypeService = customerTypeService;
   }
 
   @GetMapping("/{id}/of-sale")
@@ -103,6 +114,29 @@ public class CustomerController {
             .add("pageSize", pageSize));
   }
 
+  @PostMapping("/in-ocean")
+  public FastMap findInOceanCustomers(
+      @RequestHeader("x-user-id") Long loginUserId, @RequestBody FastMap body) {
+    if (!userService.isGod(userService.findById(loginUserId))) {
+      throw new BadRequestException("Only GOD can view sands");
+    }
+
+    String filterText = body.getString("filterText");
+    List<String> locationCodes = body.getList("locationCodes");
+    List<Long> typeIds = body.getList("typeIds");
+    List<Integer> sourceIds = body.getList("sourceIds");
+    Integer page = body.getInt(0, "page");
+    Integer pageSize = body.getInt(10, "pageSize");
+    return customerService.findInOceanCustomers(
+        FastMap.create()
+            .add("filterText", filterText)
+            .add("locationCodes", locationCodes)
+            .add("typeIds", typeIds)
+            .add("sourceIds", sourceIds)
+            .add("page", page)
+            .add("pageSize", pageSize));
+  }
+
   @PostMapping("/task-based")
   public FastMap findTaskBasedCustomers(
       @RequestHeader("x-user-id") Long loginUserId, @RequestBody FastMap body) {
@@ -127,8 +161,8 @@ public class CustomerController {
     customerService.upsertSaleCustomerState(body);
   }
 
-  @PostMapping("/assign-to")
-  public void assignCustomerTo(
+  @PostMapping("/assign-to-sale")
+  public void assignCustomerToSale(
       @RequestHeader("x-user-id") Long loginUserId, @RequestBody SaleCustomerDto body) {
     body.setSaleId(loginUserId);
     customerService.assignCustomer(body);
@@ -205,11 +239,25 @@ public class CustomerController {
     customerDto.setGender(body.getInt("gender"));
     customerDto.setMobilePhone(body.getString("mobilePhone"));
     customerDto.setEmail(body.getString("email"));
-    customerDto.setAddress(body.getString("address"));
-    customerDto.setAddressId(body.getLong("addressId"));
+
+    FastMap address = body.getMap("address");
+    CustomerAddressDto customerAddressDto = new CustomerAddressDto();
+    customerAddressDto.setAddress(address.getString("address"));
+    customerAddressDto.setWardCode(address.getString("wardCode"));
+    customerAddressDto.setWardName(address.getString("wardName"));
+    customerAddressDto.setDistrictCode(address.getString("districtCode"));
+    customerAddressDto.setDistrictName(address.getString("districtName"));
+    customerAddressDto.setProvinceCode(address.getString("provinceCode"));
+    customerAddressDto.setProvinceName(address.getString("provinceName"));
+    customerAddressDto.setRegionCode(address.getString("regionCode"));
+    customerAddressDto.setRegionName(address.getString("regionName"));
+    customerDto.setAddresses(List.of(customerAddressDto));
+
+//    customerDto.setAddress(body.getString("address"));
+//    customerDto.setAddressId(body.getLong("addressId"));
     customerDto.setTaxCode(body.getString("taxCode"));
     customerDto.setPinCode(body.getString("pinCode"));
-    customerDto.setCustomerTypeId(body.getInt("customerTypeId"));
+    customerDto.setCustomerTypeId(body.getLong("customerTypeId"));
     customerDto.setSourceId(body.getInt("sourceId"));
     customerDto.setIdf(body.getLong("customerId"));
     List<CustomerReferenceDto> references = new ArrayList<>();
@@ -323,10 +371,29 @@ public class CustomerController {
     saleCustomerCategoryService.deleteSaleCustomerCategory(loginUserId, id);
   }
 
+  // TODO: need to keep to run only once times when init customer relationship
+  // other case will be handler by webhook from kiotviet
+  @Deprecated
   @PostMapping("/init-relationship")
   public void initRelationship(@RequestHeader("x-user-id") Long loginUserId) {
-    // TODO: need to check is GOD here
-    System.out.println("init-relationship by " + loginUserId);
+    if (!userService.isGod(userService.findById(loginUserId))) {
+      throw new BadRequestException("Only GOD can init relationship");
+    }
     customerService.initRelationship();
+  }
+
+  @PostMapping("/craft/{sourceId}")
+  public void craftCustomers(@PathVariable Integer sourceId) {
+    customerCraftService.craftCustomers(sourceId);
+  }
+
+  @GetMapping("/types")
+  public List<CustomerTypeDto> getAllCustomerTypes() {
+    return customerTypeService.getAllCustomerTypes();
+  }
+
+  @PostMapping("/{id}/approve")
+  public void approveFromSandToGold(@PathVariable Long id, @RequestBody FastMap body) {
+    customerService.approveFromSandToGold(id, body);
   }
 }

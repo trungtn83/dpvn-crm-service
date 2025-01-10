@@ -22,7 +22,11 @@ public class UserService {
     this.reportCrudClient = reportCrudClient;
   }
 
-  public List<UserDto> getByUser(Long userId) {
+  public UserDto findById(Long userId) {
+    return crmCrudClient.getUserById(userId);
+  }
+
+  public List<UserDto> findUsersByLeaderId(Long userId) {
     List<UserDto> userDtos = crmCrudClient.getUsers().stream().filter(UserDto::getActive).toList();
     UserDto user =
         userDtos.stream()
@@ -45,7 +49,7 @@ public class UserService {
         .toList();
   }
 
-  private boolean isGod(UserDto userDto) {
+  public boolean isGod(UserDto userDto) {
     return "GOD".equals(userDto.getRole().getRoleName());
   }
 
@@ -64,8 +68,9 @@ public class UserService {
   }
 
   public UserDto findUserByKvUserId(Long kvUserId) {
-    KvUserDto kvUserDto = reportCrudClient.findKvUserById(kvUserId);
-    return crmCrudClient.getCrmUserByUserName(kvUserDto.getUsername());
+    UserDto userOption = new UserDto();
+    userOption.setIdf(kvUserId);
+   return findUsersByOptions(userOption).stream().findFirst().orElseThrow();
   }
 
   public List<UserDto> findUsersByOptions(UserDto userDto) {

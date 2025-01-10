@@ -21,7 +21,7 @@ public class UserController {
 
   @GetMapping("/find-by-user/{userId}")
   public List<UserDto> getByUser(@PathVariable(name = "userId") Long userId) {
-    return userService.getByUser(userId);
+    return userService.findUsersByLeaderId(userId);
   }
 
   @PostMapping("/find-by-options")
