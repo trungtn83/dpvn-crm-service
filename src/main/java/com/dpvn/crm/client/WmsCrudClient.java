@@ -1,10 +1,9 @@
 package com.dpvn.crm.client;
 
 import com.dpvn.shared.util.FastMap;
-import java.util.List;
-
 import com.dpvn.wmscrudservice.domain.dto.InvoiceDto;
 import com.dpvn.wmscrudservice.domain.dto.OrderDto;
+import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,5 +29,4 @@ public interface WmsCrudClient {
 
   @PostMapping("/invoice/sync-all")
   void syncAllInvoices(@RequestBody List<InvoiceDto> invoiceDtos);
-
 }

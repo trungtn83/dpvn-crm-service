@@ -23,6 +23,7 @@ public class InvoiceHookDto {
 
   @JsonProperty("BranchId")
   private Long branchId;
+
   @JsonProperty("BranchName")
   private String branchName;
 

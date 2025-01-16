@@ -4,9 +4,8 @@ import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crmcrudservice.domain.dto.CampaignDto;
 import com.dpvn.shared.service.AbstractService;
 import com.dpvn.shared.util.FastMap;
-import org.springframework.stereotype.Service;
-
 import java.util.List;
+import org.springframework.stereotype.Service;
 
 @Service
 public class CampaignService extends AbstractService {

@@ -23,6 +23,7 @@ public class OrderHookDto {
 
   @JsonProperty("BranchId")
   private Long branchId;
+
   @JsonProperty("BranchName")
   private String branchName;
 
@@ -66,6 +67,7 @@ public class OrderHookDto {
 
   @JsonProperty("DeliveryInfo")
   private DeliveryInfoHookDto deliveryInfo;
+
   @JsonProperty("DeliveryPackage")
   private DeliveryPackageHookDto deliveryPackage;
 

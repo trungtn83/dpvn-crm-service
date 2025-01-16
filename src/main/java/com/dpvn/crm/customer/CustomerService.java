@@ -6,15 +6,11 @@ import com.dpvn.crm.client.WmsCrudClient;
 import com.dpvn.crmcrudservice.domain.constant.Customers;
 import com.dpvn.crmcrudservice.domain.constant.RelationshipType;
 import com.dpvn.crmcrudservice.domain.constant.SaleCustomers;
-import com.dpvn.crmcrudservice.domain.constant.Visibility;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.CustomerReferenceDto;
-import com.dpvn.crmcrudservice.domain.dto.InteractionDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerStateDto;
-import com.dpvn.crmcrudservice.domain.dto.TaskDto;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
-import com.dpvn.kiotviet.domain.KvCustomerDto;
 import com.dpvn.shared.domain.constant.Globals;
 import com.dpvn.shared.exception.BadRequestException;
 import com.dpvn.shared.service.AbstractService;
@@ -26,9 +22,12 @@ import com.dpvn.shared.util.StringUtil;
 import com.dpvn.wmscrudservice.domain.constant.Invoices;
 import com.dpvn.wmscrudservice.domain.constant.Orders;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
@@ -53,18 +52,15 @@ public class CustomerService extends AbstractService {
     this.webHookHandlerService = webHookHandlerService;
   }
 
-  private void validateCustomerMobilePhones(CustomerDto customerDto) {
-    List<String> mobileReferenceDtos =
-        customerDto.getReferences().stream()
-            .filter(
-                cr ->
-                    List.of(Customers.References.MOBILE_PHONE, Customers.References.ZALO)
-                        .contains(cr.getCode()))
-            .map(CustomerReferenceDto::getValue)
-            .collect(Collectors.toList());
-    mobileReferenceDtos.add(customerDto.getMobilePhone());
-    List<String> duplicatedMobilePhones =
-        ListUtil.getDuplicates(mobileReferenceDtos, Objects::toString);
+  private void validateCustomerMobilePhones(
+      Long customerId,
+      String mobilePhone,
+      List<String> mobileReferences,
+      List<String> zaloReferences) {
+    // check inside current customer
+    List<String> checkLists = new ArrayList<>(mobileReferences);
+    checkLists.add(mobilePhone);
+    List<String> duplicatedMobilePhones = ListUtil.getDuplicates(checkLists, Objects::toString);
     if (ListUtil.isNotEmpty(duplicatedMobilePhones)) {
       throw new BadRequestException(
           "DUPLICATED",
@@ -73,9 +69,23 @@ public class CustomerService extends AbstractService {
               ListUtil.toString(duplicatedMobilePhones)));
     }
 
+    // check list zalo inside it
+    List<String> duplicatedZalos = ListUtil.getDuplicates(zaloReferences, Objects::toString);
+    if (ListUtil.isNotEmpty(duplicatedZalos)) {
+      throw new BadRequestException(
+          "DUPLICATED",
+          String.format(
+              "Customer with zalo %s is duplicated", ListUtil.toString(duplicatedMobilePhones)));
+    }
+
+    // add zalo number to checklist
+    Set<String> uniqueMobiles = new HashSet<>(checkLists);
+    uniqueMobiles.addAll(zaloReferences);
+
+    // check with other customers
     List<String> errors =
-        mobileReferenceDtos.stream()
-            .map(mobile -> findCustomerByMobilePhone(customerDto.getId(), mobile))
+        uniqueMobiles.stream()
+            .map(mobile -> findCustomerByMobilePhone(customerId, mobile))
             .filter(Objects::nonNull)
             .toList();
     if (ListUtil.isNotEmpty(errors)) {
@@ -84,23 +94,28 @@ public class CustomerService extends AbstractService {
     }
   }
 
-  public void upsertCustomer(CustomerDto customerDto) {
-    validateCustomerMobilePhones(customerDto);
-    crmCrudClient.upsertCustomer(customerDto);
-  }
-
   public void createNewCustomer(
       Long userId, CustomerDto customerDto, SaleCustomerDto saleCustomerDto) {
-    validateCustomerMobilePhones(customerDto);
+    validateCustomerMobilePhones(
+        null,
+        customerDto.getMobilePhone(),
+        customerDto.getReferences().stream()
+            .filter(cr -> Customers.References.MOBILE_PHONE.equals(cr.getCode()))
+            .map(CustomerReferenceDto::getValue)
+            .collect(Collectors.toList()),
+        customerDto.getReferences().stream()
+            .filter(cr -> Customers.References.ZALO.equals(cr.getCode()))
+            .map(CustomerReferenceDto::getValue)
+            .toList());
     customerDto.setActive(true);
-    customerDto.setStatus(Customers.Status.APPROVED);
+    customerDto.setStatus(Customers.Status.VERIFIED);
     CustomerDto result = crmCrudClient.createNewCustomer(customerDto);
     // auto generate code when user leave it empty
     if (StringUtil.isEmpty(result.getCustomerCode())) {
-      CustomerDto newOne = new CustomerDto();
-      newOne.setId(result.getId());
-      newOne.setCustomerCode(String.format("KHA%09d", result.getId()));
-      result = crmCrudClient.upsertCustomer(newOne);
+      result =
+          crmCrudClient.updateExistedCustomer(
+              result.getId(),
+              FastMap.create().add("customerCode", String.format("KHA%09d", result.getId())));
     }
     if (saleCustomerDto.getSaleId() != null) {
       saleCustomerDto.setCustomerId(result.getId());
@@ -110,47 +125,27 @@ public class CustomerService extends AbstractService {
       saleCustomerDto.setRelationshipType(RelationshipType.PIC);
       saleCustomerDto.setReasonId(SaleCustomers.Reason.LEADER);
       saleCustomerDto.setActive(Boolean.TRUE);
-      saleCustomerService.upsertSaleCustomer(saleCustomerDto);
+      saleCustomerService.createNewSaleCustomer(saleCustomerDto);
     }
   }
 
-  public void updateExistedCustomer(
-      Long userId, CustomerDto customerDto, SaleCustomerDto saleCustomerDto) {
-    Long customerId = customerDto.getId();
+  public void updateExistedCustomer(Long customerId, FastMap customerDto) {
     CustomerDto existedCustomer = crmCrudClient.findCustomerById(customerId);
     if (existedCustomer == null) {
       throw new BadRequestException(String.format("Customer with id %s not found", customerId));
     }
-    if (StringUtil.isEmpty(customerDto.getCustomerCode())
-        || !customerDto.getCustomerCode().equals(existedCustomer.getCustomerCode())) {
-      throw new BadRequestException(
-          String.format("Customer code %s is not valid", customerDto.getCustomerCode()));
-    }
-    if (StringUtil.isEmpty(customerDto.getMobilePhone())
-        || !customerDto.getMobilePhone().equals(existedCustomer.getMobilePhone())) {
-      throw new BadRequestException(
-          String.format("Mobile phone %s is not valid", customerDto.getMobilePhone()));
-    }
-
-    validateCustomerMobilePhones(customerDto);
-    CustomerDto newOne = crmCrudClient.updateExistedCustomer(customerId, customerDto);
-
-    SaleCustomerDto existedSaleCustomer =
-        saleCustomerService.findSaleCustomerByReason(
-            null, customerDto.getId(), RelationshipType.PIC, SaleCustomers.Reason.LEADER, null);
-    if (existedSaleCustomer != null) {
-      crmCrudClient.deleteSaleCustomer(existedSaleCustomer.getId());
-    }
-    if (saleCustomerDto.getSaleId() != null) {
-      saleCustomerDto.setCustomerId(customerId);
-      saleCustomerDto.setCustomerDto(newOne);
-      saleCustomerDto.setReasonRef(userId.toString());
-      saleCustomerDto.setReasonNote("Được phân công khi cập nhật khách hàng");
-      saleCustomerDto.setRelationshipType(RelationshipType.PIC);
-      saleCustomerDto.setReasonId(SaleCustomers.Reason.LEADER);
-      saleCustomerDto.setActive(Boolean.TRUE);
-      saleCustomerService.upsertSaleCustomer(saleCustomerDto);
-    }
+    validateCustomerMobilePhones(
+        customerId,
+        customerDto.getString("mobilePhone"),
+        customerDto.getListClass("references", CustomerReferenceDto.class).stream()
+            .filter(cr -> Customers.References.MOBILE_PHONE.equals(cr.getCode()))
+            .map(CustomerReferenceDto::getValue)
+            .toList(),
+        customerDto.getListClass("references", CustomerReferenceDto.class).stream()
+            .filter(cr -> Customers.References.ZALO.equals(cr.getCode()))
+            .map(CustomerReferenceDto::getValue)
+            .toList());
+    crmCrudClient.updateExistedCustomer(customerId, customerDto);
   }
 
   private SaleCustomerDto initSaleCustomerDto(Long customerId) {
@@ -267,28 +262,6 @@ public class CustomerService extends AbstractService {
     crmCrudClient.revokeCustomers(body);
   }
 
-  public List<InteractionDto> getAllInteractions(Long saleId, Long customerId) {
-    List<InteractionDto> interactionDtos =
-        crmCrudClient.getAllInteractions(null, customerId, null, null);
-    return interactionDtos.stream()
-        .filter(
-            i ->
-                Objects.equals(i.getInteractBy(), saleId) || i.getVisibility() == Visibility.PUBLIC)
-        .toList();
-  }
-
-  public void upsertInteraction(InteractionDto body) {
-    crmCrudClient.upsertInteraction(body);
-  }
-
-  public List<TaskDto> getAllTasks(Long saleId, Long customerId) {
-    return crmCrudClient.getAllTasks(saleId, customerId, null, null, null);
-  }
-
-  public void upsertTask(TaskDto body) {
-    crmCrudClient.upsertTask(body);
-  }
-
   public void updateLastTransaction(Long customerId, FastMap body) {
     crmCrudClient.updateLastTransaction(customerId, body);
   }
@@ -297,32 +270,10 @@ public class CustomerService extends AbstractService {
     return crmCrudClient.findCustomerByIdf(kvCustomerId);
   }
 
-  public void doActionCustomer(Long saleId, Long customerId, Integer reasonId, boolean flag) {
-    SaleCustomerDto saleCustomerDto =
-        saleCustomerService.findSaleCustomerByReason(
-            saleId, customerId, RelationshipType.INVOLVED, reasonId, null);
-    if (flag) {
-      if (saleCustomerDto == null) {
-        SaleCustomerDto newSaleCustomerDto = new SaleCustomerDto();
-        newSaleCustomerDto.setSaleId(saleId);
-        newSaleCustomerDto.setCustomerId(customerId);
-        newSaleCustomerDto.setRelationshipType(RelationshipType.INVOLVED);
-        newSaleCustomerDto.setReasonId(reasonId);
-        newSaleCustomerDto.setActive(Boolean.TRUE);
-        saleCustomerService.upsertSaleCustomer(newSaleCustomerDto);
-      }
-    } else {
-      if (saleCustomerDto != null) {
-        saleCustomerService.removeSaleCustomerByReason(saleId, customerId, reasonId, null);
-      }
-    }
-  }
-
   public void initRelationship() {
-    int page = 0;
     while (true) {
       List<CustomerDto> customerDtos =
-          crmCrudClient.findByStatusForInitRelationship(page, Globals.Paging.FETCHING_PAGE_SIZE);
+          crmCrudClient.findByStatusForInitRelationship(0, Globals.Paging.FETCHING_PAGE_SIZE);
       if (ListUtil.isEmpty(customerDtos)) {
         return;
       }
@@ -387,23 +338,14 @@ public class CustomerService extends AbstractService {
                       }
                     });
 
-            updateCustomerStatus(
-                customerDto.getId(), customerDto.getIdf(), Customers.Status.APPROVED);
+            crmCrudClient.updateExistedCustomer(
+                customerDto.getId(), FastMap.create().add("status", Customers.Status.VERIFIED));
             LOGGER.info("Initialized relationship for customer {}", customerDto.getCustomerName());
           });
-      page++;
       if (customerDtos.size() < Globals.Paging.FETCHING_PAGE_SIZE) {
         return;
       }
     }
-  }
-
-  private void updateCustomerStatus(Long id, Long idf, String status) {
-    CustomerDto customerDto = new CustomerDto();
-    customerDto.setId(id);
-    customerDto.setIdf(idf);
-    customerDto.setStatus(status);
-    crmCrudClient.upsertCustomer(customerDto);
   }
 
   private List<FastMap> findLastOrderOfCustomerByStatus(String status, List<Long> customerIds) {

@@ -2,6 +2,7 @@ package com.dpvn.crm.interaction;
 
 import com.dpvn.crmcrudservice.domain.dto.InteractionDto;
 import com.dpvn.shared.util.FastMap;
+import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,6 +20,12 @@ public class InteractionController {
     this.interactionService = interactionService;
   }
 
+  @GetMapping("/interaction")
+  public List<InteractionDto> getInteractionCustomers(
+      @RequestHeader("x-user-id") Long loginUserId, @RequestParam Long customerId) {
+    return interactionService.getAllInteractions(loginUserId, customerId);
+  }
+
   @GetMapping("/find-by-options")
   public FastMap findInteractionsByOptions(
       @RequestHeader("x-user-id") Long loginUserId,
@@ -29,11 +36,11 @@ public class InteractionController {
         loginUserId, customerId, campaignId, isLite);
   }
 
-  @PostMapping("/upsert")
-  public void upsertInteraction(
+  @PostMapping
+  public void createNewInteraction(
       @RequestHeader("x-user-id") Long loginUserId, @RequestBody InteractionDto body) {
     body.setCreatedBy(loginUserId);
     body.setInteractBy(loginUserId);
-    interactionService.upsertInteraction(body);
+    interactionService.createInteraction(body);
   }
 }

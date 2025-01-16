@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -75,11 +74,8 @@ public interface CrmCrudClient {
   @PostMapping("/customer")
   CustomerDto createNewCustomer(@RequestBody CustomerDto dto);
 
-  @PutMapping("/customer/{id}")
-  CustomerDto updateExistedCustomer(@PathVariable("id") Long id, @RequestBody CustomerDto dto);
-
-  @PostMapping("/customer/upsert")
-  CustomerDto upsertCustomer(@RequestBody CustomerDto dto);
+  @PostMapping(value = "/customer/{id}")
+  CustomerDto updateExistedCustomer(@PathVariable("id") Long id, @RequestBody FastMap dto);
 
   @GetMapping("/customer/find-by-mobile-phone")
   List<CustomerDto> findCustomersByMobilePhone(@RequestParam String mobilePhone);
@@ -140,12 +136,11 @@ public interface CrmCrudClient {
 
   // SALE-CUSTOMER
   // ============================================================================================================
-  @PostMapping("/sale-customer/upsert")
-  SaleCustomerDto upsertSaleCustomer(@RequestBody SaleCustomerDto saleCustomerDto);
+  @PostMapping("/sale-customer")
+  SaleCustomerDto createNewSaleCustomer(@RequestBody SaleCustomerDto dto);
 
   @PostMapping("/sale-customer/{id}")
-  SaleCustomerDto updateSaleCustomer(
-      @PathVariable Long id, @RequestBody SaleCustomerDto saleCustomerDto);
+  SaleCustomerDto updateExistedSaleCustomer(@PathVariable Long id, @RequestBody FastMap data);
 
   @PostMapping("/sale-customer/remove-by-options")
   void removeSaleCustomerByOptions(@RequestBody SaleCustomerDto dto);
@@ -163,7 +158,8 @@ public interface CrmCrudClient {
   void upsertSaleCustomerState(@RequestBody SaleCustomerStateDto body);
 
   @GetMapping("/customer/find-last-created")
-  CustomerDto findLastCreatedCustomer(@RequestParam(value = "sourceId", required = false) Integer sourceId);
+  CustomerDto findLastCreatedCustomer(
+      @RequestParam(value = "sourceId", required = false) Integer sourceId);
 
   // SALE-CUSTOMER-CATEGORY
   // ============================================================================================================
@@ -187,8 +183,8 @@ public interface CrmCrudClient {
       @RequestParam(required = false) Long kpiId,
       @RequestParam(required = false) Long otherId);
 
-  @PostMapping("/task/upsert")
-  void upsertTask(@RequestBody TaskDto body);
+  @PostMapping("/task")
+  void createNewTask(@RequestBody TaskDto body);
 
   @DeleteMapping("/task/{id}")
   void deleteTask(@PathVariable Long id);
@@ -202,8 +198,8 @@ public interface CrmCrudClient {
       @RequestParam(required = false) Long campaignId,
       @RequestParam(required = false) Integer visibility);
 
-  @PostMapping("/interaction/upsert")
-  void upsertInteraction(@RequestBody InteractionDto body);
+  @PostMapping("/interaction")
+  void createInteraction(@RequestBody InteractionDto body);
 
   @PostMapping("/interaction/find-last-interactions-date")
   List<InteractionDto> getLastInteractionDates(@RequestBody FastMap body);

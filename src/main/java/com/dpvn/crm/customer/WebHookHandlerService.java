@@ -51,10 +51,12 @@ public class WebHookHandlerService extends AbstractService {
         saleCustomerService.findSaleCustomerByReason(
             sale.getId(), customer.getId(), null, null, code);
     if (saleCustomerDto != null) {
-      saleCustomerDto.setReasonId(SaleCustomers.Reason.ORDER);
-      saleCustomerDto.setAvailableFrom(from);
-      saleCustomerDto.setAvailableTo(to);
-      saleCustomerService.upsertSaleCustomer(saleCustomerDto);
+      saleCustomerService.updateExistedSaleCustomer(
+          saleCustomerDto.getId(),
+          FastMap.create()
+              .add("reasonId", SaleCustomers.Reason.ORDER)
+              .add("availableFrom", from)
+              .add("availableTo", to));
       LOGGER.info(
           "Sale customer [{}, {}] for ORDER code {} existed, process update", sale, customer, code);
       return;
@@ -62,7 +64,7 @@ public class WebHookHandlerService extends AbstractService {
 
     // TODO: Có cần check nếu khách cũ nhưng còn ít hơn 7 ngày thì có nên tạo không???
     if (!isOldCustomer(sale.getId(), customer.getId())) {
-      saleCustomerService.upsertSaleCustomer(
+      saleCustomerService.createNewSaleCustomer(
           generateAssignCustomerToSaleWithTypeInDays(
               sale.getId(), customer.getId(), SaleCustomers.Reason.ORDER, code, from, to));
       LOGGER.info(
@@ -89,17 +91,18 @@ public class WebHookHandlerService extends AbstractService {
         saleCustomerService.findSaleCustomerByReason(
             sale.getId(), customer.getId(), null, null, code);
     if (saleCustomerDto != null) {
-      saleCustomerDto.setRelationshipType(RelationshipType.PIC);
-      saleCustomerDto.setReasonId(SaleCustomers.Reason.ORDER);
-      saleCustomerDto.setAvailableFrom(from);
-      saleCustomerDto.setAvailableTo(to);
-      saleCustomerService.upsertSaleCustomer(saleCustomerDto);
-      return;
+      saleCustomerService.updateExistedSaleCustomer(
+          saleCustomerDto.getId(),
+          FastMap.create()
+              .add("relationshipType", RelationshipType.PIC)
+              .add("reasonId", SaleCustomers.Reason.ORDER)
+              .add("availableFrom", from)
+              .add("availableTo", to));
+    } else {
+      saleCustomerService.createNewSaleCustomer(
+          generateAssignCustomerToSaleWithTypeInDays(
+              sale.getId(), customer.getId(), SaleCustomers.Reason.ORDER, code, from, to));
     }
-
-    saleCustomerService.upsertSaleCustomer(
-        generateAssignCustomerToSaleWithTypeInDays(
-            sale.getId(), customer.getId(), SaleCustomers.Reason.ORDER, code, from, to));
   }
 
   /**
@@ -130,13 +133,19 @@ public class WebHookHandlerService extends AbstractService {
       saleCustomerDto.setReasonRef(code);
       saleCustomerDto.setAvailableFrom(from);
       saleCustomerDto.setAvailableTo(to);
-      saleCustomerService.upsertSaleCustomer(saleCustomerDto);
-      return;
+      saleCustomerService.updateExistedSaleCustomer(
+          saleCustomerDto.getId(),
+          FastMap.create()
+              .add("relationshipType", RelationshipType.PIC)
+              .add("reasonId", SaleCustomers.Reason.INVOICE)
+              .add("reasonRef", code)
+              .add("availableFrom", from)
+              .add("availableTo", to));
+    } else {
+      saleCustomerService.createNewSaleCustomer(
+          generateAssignCustomerToSaleWithTypeInDays(
+              sale.getId(), customer.getId(), SaleCustomers.Reason.INVOICE, code, from, to));
     }
-
-    saleCustomerService.upsertSaleCustomer(
-        generateAssignCustomerToSaleWithTypeInDays(
-            sale.getId(), customer.getId(), SaleCustomers.Reason.INVOICE, code, from, to));
   }
 
   /** Khi Invoice là completed: hình như chưa cần làm gì */

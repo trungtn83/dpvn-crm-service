@@ -19,8 +19,8 @@ public class TaskService {
     return crmCrudClient.getAllTasks(userId, customerId, campaignId, kpiId, otherId);
   }
 
-  public void upsertTask(TaskDto body) {
-    crmCrudClient.upsertTask(body);
+  public void createNewTask(TaskDto body) {
+    crmCrudClient.createNewTask(body);
   }
 
   public void deleteTask(Long userId, Long id) {

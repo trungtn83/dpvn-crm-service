@@ -7,11 +7,9 @@ import com.dpvn.crmcrudservice.domain.dto.CustomerAddressDto;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.CustomerReferenceDto;
 import com.dpvn.crmcrudservice.domain.dto.CustomerTypeDto;
-import com.dpvn.crmcrudservice.domain.dto.InteractionDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerCategoryDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerStateDto;
-import com.dpvn.crmcrudservice.domain.dto.TaskDto;
 import com.dpvn.shared.exception.BadRequestException;
 import com.dpvn.shared.util.DateUtil;
 import com.dpvn.shared.util.FastMap;
@@ -44,7 +42,8 @@ public class CustomerController {
       SaleCustomerService saleCustomerService,
       SaleCustomerCategoryService saleCustomerCategoryService,
       UserService userService,
-      CustomerCraftService customerCraftService, CustomerTypeService customerTypeService) {
+      CustomerCraftService customerCraftService,
+      CustomerTypeService customerTypeService) {
     this.customerService = customerService;
     this.saleCustomerService = saleCustomerService;
     this.saleCustomerCategoryService = saleCustomerCategoryService;
@@ -189,33 +188,6 @@ public class CustomerController {
     customerService.revokeCustomers(body);
   }
 
-  @GetMapping("/interaction")
-  public List<InteractionDto> getInteractionCustomers(
-      @RequestHeader("x-user-id") Long loginUserId, @RequestParam Long customerId) {
-    return customerService.getAllInteractions(loginUserId, customerId);
-  }
-
-  @PostMapping("/interaction")
-  public void upsertInteraction(
-      @RequestHeader("x-user-id") Long loginUserId, @RequestBody InteractionDto body) {
-    body.setCreatedBy(loginUserId);
-    body.setInteractBy(loginUserId);
-    customerService.upsertInteraction(body);
-  }
-
-  @GetMapping("/task")
-  public List<TaskDto> getAllTasks(
-      @RequestHeader("x-user-id") Long loginUserId, @RequestParam Long customerId) {
-    return customerService.getAllTasks(loginUserId, customerId);
-  }
-
-  @PostMapping("/task")
-  public void upsertTask(@RequestHeader("x-user-id") Long loginUserId, @RequestBody TaskDto body) {
-    body.setCreatedBy(loginUserId);
-    body.setUserId(loginUserId);
-    customerService.upsertTask(body);
-  }
-
   /**
    * @param id: customer id
    * @param body (lastTransaction:Instant, isSuccessful:boolean)
@@ -225,12 +197,69 @@ public class CustomerController {
     customerService.updateLastTransaction(id, body);
   }
 
-  @PostMapping("/upsert")
-  public void upsertCustomer(@RequestBody CustomerDto customerDto) {
-    customerService.upsertCustomer(customerDto);
-  }
-
   private CustomerDto extractCustomerFromBody(FastMap body) {
+    //    FastMap customerDto =  FastMap.create()
+    //        .add("id", body.getLong("id"))
+    //        .add("customerCode", body.getString("customerCode"))
+    //        .add("customerName", body.getString("customerName"))
+    //        .add("birthday", body.getInstant("birthday"))
+    //        .add("gender", body.getInt("gender"))
+    //        .add("mobilePhone", body.getString("mobilePhone"))
+    //        .add("email", body.getString("email"))
+    //        .add("taxCode", body.getString("taxCode"))
+    //        .add("pinCode", body.getString("pinCode"))
+    //        .add("customerTypeId", body.getLong("customerTypeId"))
+    //        .add("sourceId", body.getInt("sourceId"))
+    //        .add("idf", body.getLong("customerId"));
+    //
+    //    FastMap address = body.getMap("address");
+    //    CustomerAddressDto customerAddressDto = new CustomerAddressDto();
+    //    customerAddressDto.setAddress(address.getString("address"));
+    //    customerAddressDto.setWardCode(address.getString("wardCode"));
+    //    customerAddressDto.setWardName(address.getString("wardName"));
+    //    customerAddressDto.setDistrictCode(address.getString("districtCode"));
+    //    customerAddressDto.setDistrictName(address.getString("districtName"));
+    //    customerAddressDto.setProvinceCode(address.getString("provinceCode"));
+    //    customerAddressDto.setProvinceName(address.getString("provinceName"));
+    //    customerAddressDto.setRegionCode(address.getString("regionCode"));
+    //    customerAddressDto.setRegionName(address.getString("regionName"));
+    //    customerDto.add("addresses", List.of(customerAddressDto));
+    //
+    //        List<CustomerReferenceDto> references = new ArrayList<>();
+    //    List<String> mobilePhones = body.getList("mobilePhones");
+    //    if (ListUtil.isNotEmpty(mobilePhones)) {
+    //      mobilePhones.forEach(
+    //          mobilePhone ->
+    //              references.add(
+    //                  new CustomerReferenceDto(Customers.References.MOBILE_PHONE, mobilePhone)));
+    //    }
+    //    List<String> zalos = body.getList("zalos");
+    //    if (ListUtil.isNotEmpty(zalos)) {
+    //      zalos.forEach(
+    //          zalo -> references.add(new CustomerReferenceDto(Customers.References.ZALO, zalo)));
+    //    }
+    //    List<String> facebooks = body.getList("facebooks");
+    //    if (ListUtil.isNotEmpty(facebooks)) {
+    //      facebooks.forEach(
+    //          facebook ->
+    //              references.add(new CustomerReferenceDto(Customers.References.FACEBOOK,
+    // facebook)));
+    //    }
+    //    List<String> tiktoks = body.getList("tiktoks");
+    //    if (ListUtil.isNotEmpty(tiktoks)) {
+    //      tiktoks.forEach(
+    //          tiktok -> references.add(new CustomerReferenceDto(Customers.References.TIKTOK,
+    // tiktok)));
+    //    }
+    //    List<String> others = body.getList("others");
+    //    if (ListUtil.isNotEmpty(others)) {
+    //      others.forEach(
+    //          other -> references.add(new CustomerReferenceDto(Customers.References.OTHER,
+    // other)));
+    //    }
+    //    customerDto.add("references", references);
+    //    return customerDto;
+
     CustomerDto customerDto = new CustomerDto();
     customerDto.setId(body.getLong("id"));
     customerDto.setCustomerCode(body.getString("customerCode"));
@@ -253,8 +282,8 @@ public class CustomerController {
     customerAddressDto.setRegionName(address.getString("regionName"));
     customerDto.setAddresses(List.of(customerAddressDto));
 
-//    customerDto.setAddress(body.getString("address"));
-//    customerDto.setAddressId(body.getLong("addressId"));
+    //    customerDto.setAddress(body.getString("address"));
+    //    customerDto.setAddressId(body.getLong("addressId"));
     customerDto.setTaxCode(body.getString("taxCode"));
     customerDto.setPinCode(body.getString("pinCode"));
     customerDto.setCustomerTypeId(body.getLong("customerTypeId"));
@@ -305,7 +334,7 @@ public class CustomerController {
     return saleCustomerDto;
   }
 
-  @PostMapping("/create-new-customer")
+  @PostMapping
   public void createNewCustomer(
       @RequestHeader("x-user-id") Long loginUserId, @RequestBody FastMap body) {
     CustomerDto customerDto = extractCustomerFromBody(body);
@@ -313,17 +342,10 @@ public class CustomerController {
     customerService.createNewCustomer(loginUserId, customerDto, saleCustomerDto);
   }
 
-  @PostMapping("/update-existed-customer")
+  @PostMapping("/{id}")
   public void updateExistedCustomer(
-      @RequestHeader("x-user-id") Long loginUserId, @RequestBody FastMap body) {
-    CustomerDto customerDto = extractCustomerFromBody(body);
-    SaleCustomerDto saleCustomerDto = extractSaleCustomerFromBody(body);
-    customerService.updateExistedCustomer(loginUserId, customerDto, saleCustomerDto);
-  }
-
-  @PostMapping("/sale-customer/upsert")
-  public void upsertSaleCustomer(@RequestBody SaleCustomerDto saleCustomerDto) {
-    saleCustomerService.upsertSaleCustomer(saleCustomerDto);
+      @PathVariable(name = "id") Long customerId, @RequestBody FastMap customerDto) {
+    customerService.updateExistedCustomer(customerId, customerDto);
   }
 
   /**
@@ -339,7 +361,7 @@ public class CustomerController {
       throw new BadRequestException("Action is not valid");
     }
     boolean flag = body.getBoolean("flag");
-    customerService.doActionCustomer(loginUserId, customerId, getReasonByAction(action), flag);
+    saleCustomerService.doActionCustomer(loginUserId, customerId, getReasonByAction(action), flag);
   }
 
   private Integer getReasonByAction(String action) {

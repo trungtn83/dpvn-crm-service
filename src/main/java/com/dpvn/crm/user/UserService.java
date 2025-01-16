@@ -3,7 +3,6 @@ package com.dpvn.crm.user;
 import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crm.client.ReportCrudClient;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
-import com.dpvn.kiotviet.domain.KvUserDto;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.ObjectUtil;
 import java.util.ArrayList;
@@ -70,7 +69,7 @@ public class UserService {
   public UserDto findUserByKvUserId(Long kvUserId) {
     UserDto userOption = new UserDto();
     userOption.setIdf(kvUserId);
-   return findUsersByOptions(userOption).stream().findFirst().orElseThrow();
+    return findUsersByOptions(userOption).stream().findFirst().orElseThrow();
   }
 
   public List<UserDto> findUsersByOptions(UserDto userDto) {

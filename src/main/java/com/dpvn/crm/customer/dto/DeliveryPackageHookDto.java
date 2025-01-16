@@ -9,8 +9,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class DeliveryPackageHookDto {
   @JsonProperty("Id")
   private Long id;
+
   @JsonProperty("OrderId")
   private Long orderId;
+
   @JsonProperty("Weight")
   private Integer weight;
 
@@ -22,20 +24,28 @@ public class DeliveryPackageHookDto {
 
   @JsonProperty("Height")
   private Integer height;
+
   @JsonProperty("Receiver")
   private String receiver;
+
   @JsonProperty("ContactNumber")
   private String contactNumber;
+
   @JsonProperty("Address")
   private String address;
+
   @JsonProperty("LocationId")
   private Long locationId;
+
   @JsonProperty("LocationName")
   private String locationName;
+
   @JsonProperty("WardId")
   private Long wardId;
+
   @JsonProperty("WardName")
   private String wardName;
+
   @JsonProperty("Comments")
   private String comments;
 

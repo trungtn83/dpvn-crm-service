@@ -4,19 +4,21 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.time.Instant;
-
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class PartnerDeliveryHookDto {
   @JsonProperty("Code")
   private String code;
+
   @JsonProperty("Name")
   private String name;
+
   @JsonProperty("ContactNumber")
   private String contactNumber;
+
   @JsonProperty("Address")
   private String address;
+
   @JsonProperty("Email")
   private String email;
 

@@ -7,6 +7,7 @@ import com.dpvn.crmcrudservice.domain.dto.InteractionDto;
 import com.dpvn.shared.util.FastMap;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,16 @@ public class InteractionService {
   public InteractionService(CrmCrudClient crmCrudClient, UserService userService) {
     this.crmCrudClient = crmCrudClient;
     this.userService = userService;
+  }
+
+  public List<InteractionDto> getAllInteractions(Long saleId, Long customerId) {
+    List<InteractionDto> interactionDtos =
+        crmCrudClient.getAllInteractions(null, customerId, null, null);
+    return interactionDtos.stream()
+        .filter(
+            i ->
+                Objects.equals(i.getInteractBy(), saleId) || i.getVisibility() == Visibility.PUBLIC)
+        .toList();
   }
 
   public FastMap findInteractionsByOptions(
@@ -51,7 +62,7 @@ public class InteractionService {
     return result;
   }
 
-  public void upsertInteraction(@RequestBody InteractionDto body) {
-    crmCrudClient.upsertInteraction(body);
+  public void createInteraction(@RequestBody InteractionDto body) {
+    crmCrudClient.createInteraction(body);
   }
 }

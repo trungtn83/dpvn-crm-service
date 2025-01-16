@@ -9,18 +9,25 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class DetailHookDto {
   @JsonProperty("ProductId")
   private Long productId;
+
   @JsonProperty("ProductCode")
   private String productCode;
+
   @JsonProperty("ProductName")
   private String productName;
+
   @JsonProperty("Quantity")
   private Integer quantity;
+
   @JsonProperty("Price")
   private Long price;
+
   @JsonProperty("Discount")
   private Long discount;
+
   @JsonProperty("DiscountRatio")
   private Long discountRatio;
+
   @JsonProperty("Note")
   private String note;
 

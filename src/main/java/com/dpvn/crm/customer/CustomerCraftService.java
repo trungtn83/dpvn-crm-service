@@ -1,7 +1,6 @@
 package com.dpvn.crm.customer;
 
 import com.dpvn.crm.client.CrmCrudClient;
-import com.dpvn.crm.client.KiotvietServiceClient;
 import com.dpvn.crm.client.ReportCrudClient;
 import com.dpvn.crmcrudservice.domain.constant.Customers;
 import com.dpvn.crmcrudservice.domain.constant.Genders;
@@ -18,11 +17,9 @@ import com.dpvn.shared.util.ObjectUtil;
 import com.dpvn.shared.util.StringUtil;
 import com.dpvn.thuocsi.domain.TsAddressDto;
 import com.dpvn.thuocsi.domain.TsCustomerDto;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
-
 import org.springframework.stereotype.Service;
 
 @Service
@@ -30,9 +27,7 @@ public class CustomerCraftService extends AbstractService {
   private final ReportCrudClient reportCrudClient;
   private final CrmCrudClient crmCrudClient;
 
-  public CustomerCraftService(
-      ReportCrudClient reportCrudClient,
-      CrmCrudClient crmCrudClient) {
+  public CustomerCraftService(ReportCrudClient reportCrudClient, CrmCrudClient crmCrudClient) {
     this.reportCrudClient = reportCrudClient;
     this.crmCrudClient = crmCrudClient;
   }
@@ -52,13 +47,13 @@ public class CustomerCraftService extends AbstractService {
 
   private void craftKiotVietCustomers() {
     // TODO: call directly to kiotviet crud service to get list of customers
-    CustomerDto lastCreatedCustomer = crmCrudClient.findLastCreatedCustomer(Customers.Source.KIOTVIET);
+    CustomerDto lastCreatedCustomer =
+        crmCrudClient.findLastCreatedCustomer(Customers.Source.KIOTVIET);
     Instant lastCreatedCustomerDate =
         lastCreatedCustomer == null ? DateUtil.WELCOME_DATE : lastCreatedCustomer.getCreatedDate();
-    int page = 0 ;
+    int page = 0;
     while (craftKiotVietCustomers(lastCreatedCustomerDate, page)) {
       page++;
-      if (page > 1) break;
     }
     LOGGER.info(
         String.format(
@@ -76,7 +71,9 @@ public class CustomerCraftService extends AbstractService {
                 .add("pageSize", Globals.Paging.FETCHING_PAGE_SIZE));
     if (ListUtil.isNotEmpty(kvCustomerDtos)) {
       List<CustomerDto> customerDtos =
-          kvCustomerDtos.stream().map(CustomerCraftService::tranformKiotVietCustomerDtoToCustomerDto).toList();
+          kvCustomerDtos.stream()
+              .map(CustomerCraftService::tranformKiotVietCustomerDtoToCustomerDto)
+              .toList();
       crmCrudClient.syncAllCustomers(customerDtos);
       LOGGER.info(
           ListUtil.toString(customerDtos.stream().map(CustomerDto::getMobilePhone).toList()),
@@ -91,7 +88,8 @@ public class CustomerCraftService extends AbstractService {
     customerDto.setIdf(kvCustomerDto.getIdf());
     customerDto.setCustomerCode(kvCustomerDto.getCode());
     customerDto.setCustomerName(kvCustomerDto.getName());
-    customerDto.setGender(Objects.equals(kvCustomerDto.getGender(), Boolean.TRUE) ? Genders.MALE : Genders.FEMALE);
+    customerDto.setGender(
+        Objects.equals(kvCustomerDto.getGender(), Boolean.TRUE) ? Genders.MALE : Genders.FEMALE);
     customerDto.setMobilePhone(kvCustomerDto.getContactNumber());
     customerDto.setEmail(kvCustomerDto.getEmail());
     customerDto.setTaxCode(kvCustomerDto.getTaxCode());
@@ -127,9 +125,7 @@ public class CustomerCraftService extends AbstractService {
     return customerDto;
   }
 
-  /**
-   * Some location like 'Ba Ria - Vung Tau - TInh brvn
-   */
+  /** Some location like 'Ba Ria - Vung Tau - TInh brvn */
   private static List<String> splitLocationName(String locationName) {
     if (StringUtil.isEmpty(locationName)) {
       return List.of();
@@ -171,7 +167,6 @@ public class CustomerCraftService extends AbstractService {
     int page = 0;
     while (craftCraftOnlineCustomers(page)) {
       page++;
-      if (page > 0) break;
     }
   }
 

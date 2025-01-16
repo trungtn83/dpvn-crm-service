@@ -31,13 +31,20 @@ public class TaskController {
     return taskService.getAllTasks(loginUserId, customerId, campaignId, kpiId, otherId);
   }
 
-  @PostMapping("/upsert")
-  public void upsertTask(@RequestHeader("x-user-id") Long loginUserId, @RequestBody TaskDto body) {
+  @GetMapping("/task")
+  public List<TaskDto> getAllTasks(
+      @RequestHeader("x-user-id") Long loginUserId, @RequestParam Long customerId) {
+    return taskService.getAllTasks(loginUserId, customerId, null, null, null);
+  }
+
+  @PostMapping
+  public void createNewTask(
+      @RequestHeader("x-user-id") Long loginUserId, @RequestBody TaskDto body) {
     body.setCreatedBy(loginUserId);
     if (body.getUserId() == null) {
       body.setUserId(loginUserId);
     }
-    taskService.upsertTask(body);
+    taskService.createNewTask(body);
   }
 
   @DeleteMapping("/{id}")
