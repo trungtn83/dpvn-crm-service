@@ -24,44 +24,6 @@ public class SaleCustomerService {
     crmCrudClient.updateExistedSaleCustomer(id, saleCustomerDto);
   }
 
-  //  public void updateExistedCustomer(
-  //      Long userId, Long customerId, FastMap customerDto, FastMap saleCustomerDto) {
-  //    CustomerDto existedCustomer = crmCrudClient.findCustomerById(customerId);
-  //    if (existedCustomer == null) {
-  //      throw new BadRequestException(String.format("Customer with id %s not found", customerId));
-  //    }
-  //    if (StringUtil.isEmpty(customerDto.getCustomerCode())
-  //        || !customerDto.getCustomerCode().equals(existedCustomer.getCustomerCode())) {
-  //      throw new BadRequestException(
-  //          String.format("Customer code %s is not valid", customerDto.getCustomerCode()));
-  //    }
-  //    if (StringUtil.isEmpty(customerDto.getMobilePhone())
-  //        || !customerDto.getMobilePhone().equals(existedCustomer.getMobilePhone())) {
-  //      throw new BadRequestException(
-  //          String.format("Mobile phone %s is not valid", customerDto.getMobilePhone()));
-  //    }
-  //
-  //    validateCustomerMobilePhones(customerDto);
-  //    CustomerDto newOne = crmCrudClient.updateExistedCustomer(customerId, customerDto);
-  //
-  //    SaleCustomerDto existedSaleCustomer =
-  //        findSaleCustomerByReason(
-  //            null, customerId, RelationshipType.PIC, SaleCustomers.Reason.LEADER, null);
-  //    if (existedSaleCustomer != null) {
-  //      crmCrudClient.deleteSaleCustomer(existedSaleCustomer.getId());
-  //    }
-  //    if (saleCustomerDto.containsKey("saleId")) {
-  //      saleCustomerDto.setCustomerId(customerId);
-  //      saleCustomerDto.setCustomerDto(newOne);
-  //      saleCustomerDto.setReasonRef(userId.toString());
-  //      saleCustomerDto.setReasonNote("Được phân công khi cập nhật khách hàng");
-  //      saleCustomerDto.setRelationshipType(RelationshipType.PIC);
-  //      saleCustomerDto.setReasonId(SaleCustomers.Reason.LEADER);
-  //      saleCustomerDto.setActive(Boolean.TRUE);
-  //      saleCustomerService.upsertSaleCustomer(saleCustomerDto);
-  //    }
-  //  }
-
   public void removeSaleCustomerByReason(
       Long saleId, Long customerId, Integer reasonId, String reasonRef) {
     SaleCustomerDto saleCustomerDto = new SaleCustomerDto();

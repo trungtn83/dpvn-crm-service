@@ -189,11 +189,9 @@ public class WebHookService extends AbstractService {
                         invoiceDto -> {
                           LOGGER.info("Processing update for invoice {}", invoiceDto.getCode());
                           try {
-                            // fuk kiot, send missing data, have to call to web to sync
+                            // TODO: fuk kiot, send missing data, have to call to web to sync
                             // update order in database of wms from webhook
-                            //                            wmcCrudClient.syncAllInvoices(
-                            //
-                            // List.of(transformToInvoiceDtoFromWebHook(invoiceDto)));
+                            // wmcCrudClient.syncAllInvoices(List.of(transformToInvoiceDtoFromWebHook(invoiceDto)));
                             kiotvietServiceClient.syncInvoice(invoiceDto.getCode());
 
                             // process order hook to update customer relationship

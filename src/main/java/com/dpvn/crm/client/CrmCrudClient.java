@@ -77,6 +77,9 @@ public interface CrmCrudClient {
   @PostMapping(value = "/customer/{id}")
   CustomerDto updateExistedCustomer(@PathVariable("id") Long id, @RequestBody FastMap dto);
 
+  @DeleteMapping("/customer/{id}")
+  void deleteCustomer(@PathVariable Long id);
+
   @GetMapping("/customer/find-by-mobile-phone")
   List<CustomerDto> findCustomersByMobilePhone(@RequestParam String mobilePhone);
 

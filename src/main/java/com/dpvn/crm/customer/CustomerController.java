@@ -1,21 +1,17 @@
 package com.dpvn.crm.customer;
 
 import com.dpvn.crm.user.UserService;
-import com.dpvn.crmcrudservice.domain.constant.Customers;
 import com.dpvn.crmcrudservice.domain.constant.SaleCustomers;
-import com.dpvn.crmcrudservice.domain.dto.CustomerAddressDto;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
-import com.dpvn.crmcrudservice.domain.dto.CustomerReferenceDto;
 import com.dpvn.crmcrudservice.domain.dto.CustomerTypeDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerCategoryDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerStateDto;
 import com.dpvn.shared.exception.BadRequestException;
-import com.dpvn.shared.util.DateUtil;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.ListUtil;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -81,10 +77,13 @@ public class CustomerController {
         isOld
             ? List.of(SaleCustomers.Reason.INVOICE)
             : (ListUtil.isEmpty(sourceIds)
-                ? List.of(
-                    SaleCustomers.Reason.ORDER,
-                    SaleCustomers.Reason.CAMPAIGN,
-                    SaleCustomers.Reason.LEADER)
+                ? Stream.concat(
+                        Stream.of(
+                            SaleCustomers.Reason.ORDER,
+                            SaleCustomers.Reason.CAMPAIGN,
+                            SaleCustomers.Reason.LEADER),
+                        SaleCustomers.Reason.BY_MY_HANDS.stream())
+                    .toList()
                 : sourceIds);
     return customerService.findMyCustomers(
         FastMap.create()
@@ -114,12 +113,7 @@ public class CustomerController {
   }
 
   @PostMapping("/in-ocean")
-  public FastMap findInOceanCustomers(
-      @RequestHeader("x-user-id") Long loginUserId, @RequestBody FastMap body) {
-    if (!userService.isGod(userService.findById(loginUserId))) {
-      throw new BadRequestException("Only GOD can view sands");
-    }
-
+  public FastMap findInOceanCustomers(@RequestBody FastMap body) {
     String filterText = body.getString("filterText");
     List<String> locationCodes = body.getList("locationCodes");
     List<Long> typeIds = body.getList("typeIds");
@@ -197,155 +191,29 @@ public class CustomerController {
     customerService.updateLastTransaction(id, body);
   }
 
-  private CustomerDto extractCustomerFromBody(FastMap body) {
-    //    FastMap customerDto =  FastMap.create()
-    //        .add("id", body.getLong("id"))
-    //        .add("customerCode", body.getString("customerCode"))
-    //        .add("customerName", body.getString("customerName"))
-    //        .add("birthday", body.getInstant("birthday"))
-    //        .add("gender", body.getInt("gender"))
-    //        .add("mobilePhone", body.getString("mobilePhone"))
-    //        .add("email", body.getString("email"))
-    //        .add("taxCode", body.getString("taxCode"))
-    //        .add("pinCode", body.getString("pinCode"))
-    //        .add("customerTypeId", body.getLong("customerTypeId"))
-    //        .add("sourceId", body.getInt("sourceId"))
-    //        .add("idf", body.getLong("customerId"));
-    //
-    //    FastMap address = body.getMap("address");
-    //    CustomerAddressDto customerAddressDto = new CustomerAddressDto();
-    //    customerAddressDto.setAddress(address.getString("address"));
-    //    customerAddressDto.setWardCode(address.getString("wardCode"));
-    //    customerAddressDto.setWardName(address.getString("wardName"));
-    //    customerAddressDto.setDistrictCode(address.getString("districtCode"));
-    //    customerAddressDto.setDistrictName(address.getString("districtName"));
-    //    customerAddressDto.setProvinceCode(address.getString("provinceCode"));
-    //    customerAddressDto.setProvinceName(address.getString("provinceName"));
-    //    customerAddressDto.setRegionCode(address.getString("regionCode"));
-    //    customerAddressDto.setRegionName(address.getString("regionName"));
-    //    customerDto.add("addresses", List.of(customerAddressDto));
-    //
-    //        List<CustomerReferenceDto> references = new ArrayList<>();
-    //    List<String> mobilePhones = body.getList("mobilePhones");
-    //    if (ListUtil.isNotEmpty(mobilePhones)) {
-    //      mobilePhones.forEach(
-    //          mobilePhone ->
-    //              references.add(
-    //                  new CustomerReferenceDto(Customers.References.MOBILE_PHONE, mobilePhone)));
-    //    }
-    //    List<String> zalos = body.getList("zalos");
-    //    if (ListUtil.isNotEmpty(zalos)) {
-    //      zalos.forEach(
-    //          zalo -> references.add(new CustomerReferenceDto(Customers.References.ZALO, zalo)));
-    //    }
-    //    List<String> facebooks = body.getList("facebooks");
-    //    if (ListUtil.isNotEmpty(facebooks)) {
-    //      facebooks.forEach(
-    //          facebook ->
-    //              references.add(new CustomerReferenceDto(Customers.References.FACEBOOK,
-    // facebook)));
-    //    }
-    //    List<String> tiktoks = body.getList("tiktoks");
-    //    if (ListUtil.isNotEmpty(tiktoks)) {
-    //      tiktoks.forEach(
-    //          tiktok -> references.add(new CustomerReferenceDto(Customers.References.TIKTOK,
-    // tiktok)));
-    //    }
-    //    List<String> others = body.getList("others");
-    //    if (ListUtil.isNotEmpty(others)) {
-    //      others.forEach(
-    //          other -> references.add(new CustomerReferenceDto(Customers.References.OTHER,
-    // other)));
-    //    }
-    //    customerDto.add("references", references);
-    //    return customerDto;
-
-    CustomerDto customerDto = new CustomerDto();
-    customerDto.setId(body.getLong("id"));
-    customerDto.setCustomerCode(body.getString("customerCode"));
-    customerDto.setCustomerName(body.getString("customerName"));
-    customerDto.setBirthday(body.getInstant("birthday"));
-    customerDto.setGender(body.getInt("gender"));
-    customerDto.setMobilePhone(body.getString("mobilePhone"));
-    customerDto.setEmail(body.getString("email"));
-
-    FastMap address = body.getMap("address");
-    CustomerAddressDto customerAddressDto = new CustomerAddressDto();
-    customerAddressDto.setAddress(address.getString("address"));
-    customerAddressDto.setWardCode(address.getString("wardCode"));
-    customerAddressDto.setWardName(address.getString("wardName"));
-    customerAddressDto.setDistrictCode(address.getString("districtCode"));
-    customerAddressDto.setDistrictName(address.getString("districtName"));
-    customerAddressDto.setProvinceCode(address.getString("provinceCode"));
-    customerAddressDto.setProvinceName(address.getString("provinceName"));
-    customerAddressDto.setRegionCode(address.getString("regionCode"));
-    customerAddressDto.setRegionName(address.getString("regionName"));
-    customerDto.setAddresses(List.of(customerAddressDto));
-
-    //    customerDto.setAddress(body.getString("address"));
-    //    customerDto.setAddressId(body.getLong("addressId"));
-    customerDto.setTaxCode(body.getString("taxCode"));
-    customerDto.setPinCode(body.getString("pinCode"));
-    customerDto.setCustomerTypeId(body.getLong("customerTypeId"));
-    customerDto.setSourceId(body.getInt("sourceId"));
-    customerDto.setIdf(body.getLong("customerId"));
-    List<CustomerReferenceDto> references = new ArrayList<>();
-    List<String> mobilePhones = body.getList("mobilePhones");
-    if (ListUtil.isNotEmpty(mobilePhones)) {
-      mobilePhones.forEach(
-          mobilePhone ->
-              references.add(
-                  new CustomerReferenceDto(Customers.References.MOBILE_PHONE, mobilePhone)));
-    }
-    List<String> zalos = body.getList("zalos");
-    if (ListUtil.isNotEmpty(zalos)) {
-      zalos.forEach(
-          zalo -> references.add(new CustomerReferenceDto(Customers.References.ZALO, zalo)));
-    }
-    List<String> facebooks = body.getList("facebooks");
-    if (ListUtil.isNotEmpty(facebooks)) {
-      facebooks.forEach(
-          facebook ->
-              references.add(new CustomerReferenceDto(Customers.References.FACEBOOK, facebook)));
-    }
-    List<String> tiktoks = body.getList("tiktoks");
-    if (ListUtil.isNotEmpty(tiktoks)) {
-      tiktoks.forEach(
-          tiktok -> references.add(new CustomerReferenceDto(Customers.References.TIKTOK, tiktok)));
-    }
-    List<String> others = body.getList("others");
-    if (ListUtil.isNotEmpty(others)) {
-      others.forEach(
-          other -> references.add(new CustomerReferenceDto(Customers.References.OTHER, other)));
-    }
-    customerDto.setReferences(references);
-    return customerDto;
-  }
-
-  private SaleCustomerDto extractSaleCustomerFromBody(FastMap body) {
-    SaleCustomerDto saleCustomerDto = new SaleCustomerDto();
-    saleCustomerDto.setSaleId(body.getLong("saleId"));
-
-    List<String> availableDate = body.getList("availableDate");
-    if (ListUtil.isNotEmpty(availableDate)) {
-      saleCustomerDto.setAvailableFrom(DateUtil.from(availableDate.get(0)));
-      saleCustomerDto.setAvailableTo(DateUtil.from(availableDate.get(1)));
-    }
-    return saleCustomerDto;
+  @GetMapping("/validate-mobile-phone")
+  public FastMap validateCustomerByMobilePhone(
+      @RequestHeader("x-user-id") Long loginUserId, @RequestParam String mobilePhone) {
+    return customerService.validateMobilePhoneNewCustomer(loginUserId, mobilePhone);
   }
 
   @PostMapping
   public void createNewCustomer(
       @RequestHeader("x-user-id") Long loginUserId, @RequestBody FastMap body) {
-    CustomerDto customerDto = extractCustomerFromBody(body);
-    SaleCustomerDto saleCustomerDto = extractSaleCustomerFromBody(body);
-    customerService.createNewCustomer(loginUserId, customerDto, saleCustomerDto);
+    customerService.createNewCustomer(loginUserId, body);
   }
 
   @PostMapping("/{id}")
   public void updateExistedCustomer(
-      @PathVariable(name = "id") Long customerId, @RequestBody FastMap customerDto) {
-    customerService.updateExistedCustomer(customerId, customerDto);
+      @RequestHeader("x-user-id") Long loginUserId,
+      @PathVariable(name = "id") Long customerId,
+      @RequestBody FastMap customerDto) {
+    customerService.updateExistedCustomer(loginUserId, customerId, customerDto);
+  }
+
+  @DeleteMapping("/{id}")
+  public void deleteCustomer(@RequestHeader("x-user-id") Long loginUserId, @PathVariable Long id) {
+    customerService.deleteCustomer(loginUserId, id);
   }
 
   /**

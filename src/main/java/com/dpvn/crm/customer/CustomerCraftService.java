@@ -121,6 +121,7 @@ public class CustomerCraftService extends AbstractService {
     customerDto.setCustomerType(convertKvCustomerType(kvCustomerDto));
     customerDto.setNotes(kvCustomerDto.getComments());
     customerDto.setActive(true);
+    customerDto.setStatus(Customers.Status.VERIFIED);
     customerDto.setDeleted(false);
     return customerDto;
   }
