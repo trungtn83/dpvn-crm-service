@@ -1,7 +1,8 @@
 package com.dpvn.crm.address;
 
 import com.dpvn.shared.domain.dto.AddressDto;
-import java.util.List;
+
+import com.dpvn.shared.domain.dto.PagingResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,7 +17,7 @@ public class AddressController {
   }
 
   @GetMapping
-  public List<AddressDto> findAllAddresses() {
+  public PagingResponse<AddressDto> findAllAddresses() {
     return addressService.findAllAddresses();
   }
 }

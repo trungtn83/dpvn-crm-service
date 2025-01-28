@@ -3,6 +3,8 @@ package com.dpvn.crm.customer;
 import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crm.client.KiotvietServiceClient;
 import com.dpvn.crm.client.WmsCrudClient;
+import com.dpvn.crm.interaction.InteractionService;
+import com.dpvn.crm.interaction.InteractionUtil;
 import com.dpvn.crmcrudservice.domain.constant.Customers;
 import com.dpvn.crmcrudservice.domain.constant.RelationshipType;
 import com.dpvn.crmcrudservice.domain.constant.SaleCustomers;
@@ -39,18 +41,20 @@ public class CustomerService extends AbstractService {
   private final SaleCustomerService saleCustomerService;
   private final WmsCrudClient wmsCrudClient;
   private final WebHookHandlerService webHookHandlerService;
+  private final InteractionService interactionService;
 
   public CustomerService(
       CrmCrudClient crmCrudClient,
       KiotvietServiceClient kiotvietServiceClient,
       SaleCustomerService saleCustomerService,
       WmsCrudClient wmsCrudClient,
-      WebHookHandlerService webHookHandlerService) {
+      WebHookHandlerService webHookHandlerService, InteractionService interactionService) {
     this.crmCrudClient = crmCrudClient;
     this.kiotvietServiceClient = kiotvietServiceClient;
     this.saleCustomerService = saleCustomerService;
     this.wmsCrudClient = wmsCrudClient;
     this.webHookHandlerService = webHookHandlerService;
+    this.interactionService = interactionService;
   }
 
   private void validateCustomerMobilePhones(
@@ -130,7 +134,7 @@ public class CustomerService extends AbstractService {
                 .filter(
                     sc ->
                         !saleId.equals(sc.getSaleId())
-                            && SaleCustomers.Reason.BY_MY_HANDS.contains(sc.getReasonId()))
+                            && SaleCustomers.Reason.MY_HANDS.contains(sc.getReasonId()))
                 .toList();
         if (ListUtil.isNotEmpty(ownSaleCustomerDtos)) {
           return FastMap.create()
@@ -271,17 +275,28 @@ public class CustomerService extends AbstractService {
     if (dbCustomerDto == null) {
       throw new BadRequestException(String.format("Customer with id %s not found", customerId));
     }
+
+    String content = "Không đào được khách hàng này tiếp, đưa về ";
+
     if (StringUtil.isEmpty(dbCustomerDto.getMobilePhone())) {
       crmCrudClient.deleteCustomer(customerId);
+      content = null;
     } else if (Customers.Status.VERIFYING.equals(dbCustomerDto.getStatus())) {
       // xoá khi dược assign từ màn hình bãi cát, chưa có verìy nên status= VẺIFYING
       crmCrudClient.updateExistedCustomer(
           customerId, FastMap.create().add("status", null).add("active", false));
+      content += "Bãi cát";
+    } else {
+      content += "Kho vàng";
     }
     SaleCustomerDto saleCustomerDto = new SaleCustomerDto();
     saleCustomerDto.setSaleId(saleId);
     saleCustomerDto.setCustomerId(customerId);
     crmCrudClient.removeSaleCustomerByOptions(saleCustomerDto);
+
+    if (StringUtil.isNotEmpty(content)) {
+      interactionService.createInteraction(InteractionUtil.generateSystemInteraction(saleId, customerId, null, content));
+    }
   }
 
   private SaleCustomerDto initSaleCustomerDto(Long customerId) {
@@ -322,7 +337,10 @@ public class CustomerService extends AbstractService {
     return FastMap.create()
         .add("customer", customerDto)
         .add("saleCustomer", mySaleCustomerDto)
-        .add("lastState", myLastStateDto);
+        .add("lastState", myLastStateDto)
+        .add(
+            "isMyCustomer",
+            SaleCustomers.Reason.MY_OWN_HANDS.contains(mySaleCustomerDto.getReasonId()));
   }
 
   /**

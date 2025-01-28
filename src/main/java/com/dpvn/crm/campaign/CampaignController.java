@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,11 +22,12 @@ public class CampaignController {
 
   @GetMapping
   public List<CampaignDto> findAllCampaigns() {
-    return campaignService.findAllCampaigns();
+    return campaignService.findAllCampaigns().getRows();
   }
 
   @PostMapping("/{id}/assign-customers-to-sales")
-  public void assignCustomers(@PathVariable Long id, @RequestBody FastMap body) {
+  public void assignCustomers(@RequestHeader("x-user-id") Long loginUserId, @PathVariable Long id, @RequestBody FastMap body) {
+    body.add("userId", loginUserId);
     campaignService.assignCustomers(id, body);
   }
 }

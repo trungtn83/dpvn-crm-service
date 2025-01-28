@@ -1,5 +1,6 @@
 package com.dpvn.crm.client;
 
+import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.wmscrudservice.domain.dto.InvoiceDto;
 import com.dpvn.wmscrudservice.domain.dto.OrderDto;
@@ -21,6 +22,16 @@ public interface WmsCrudClient {
   void syncAllOrders(@RequestBody List<OrderDto> orderDtos);
 
   /**
+   *
+   * @param body
+   *  - sellerId: Long -> idf
+   *  - page: int
+   *  - pageSize: int
+   */
+  @PostMapping("/invoice/find-by-options")
+  PagingResponse<InvoiceDto> findInvoicesByOptions(@RequestBody FastMap body);
+
+  /**
    * @param body - status: String - customerIds: List<Long>
    * @return - customerId: Long - orderCode: String - purchaseDate: Instant - sellerId: Long
    */
@@ -29,4 +40,5 @@ public interface WmsCrudClient {
 
   @PostMapping("/invoice/sync-all")
   void syncAllInvoices(@RequestBody List<InvoiceDto> invoiceDtos);
+
 }

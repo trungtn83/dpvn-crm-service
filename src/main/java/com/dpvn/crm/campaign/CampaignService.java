@@ -2,6 +2,7 @@ package com.dpvn.crm.campaign;
 
 import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crmcrudservice.domain.dto.CampaignDto;
+import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.service.AbstractService;
 import com.dpvn.shared.util.FastMap;
 import java.util.List;
@@ -15,7 +16,7 @@ public class CampaignService extends AbstractService {
     this.crmCrudClient = crmCrudClient;
   }
 
-  public List<CampaignDto> findAllCampaigns() {
+  public PagingResponse<CampaignDto> findAllCampaigns() {
     return crmCrudClient.findAllCampaigns();
   }
 

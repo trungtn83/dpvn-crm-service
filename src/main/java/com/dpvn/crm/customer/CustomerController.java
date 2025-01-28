@@ -7,6 +7,7 @@ import com.dpvn.crmcrudservice.domain.dto.CustomerTypeDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerCategoryDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerStateDto;
+import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.exception.BadRequestException;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.ListUtil;
@@ -68,6 +69,7 @@ public class CustomerController {
   public FastMap getMyCustomers(
       @RequestHeader("x-user-id") Long loginUserId, @RequestBody FastMap body) {
     boolean isOld = body.getBoolean("isOld");
+    Long customerTypeId = body.getLong("customerTypeId");
     Long customerCategoryId = body.getLong("customerCategoryId");
     String filterText = body.getString("filterText");
     Integer page = body.getInt(0, "page");
@@ -82,12 +84,13 @@ public class CustomerController {
                             SaleCustomers.Reason.ORDER,
                             SaleCustomers.Reason.CAMPAIGN,
                             SaleCustomers.Reason.LEADER),
-                        SaleCustomers.Reason.BY_MY_HANDS.stream())
+                        SaleCustomers.Reason.MY_HANDS.stream())
                     .toList()
                 : sourceIds);
     return customerService.findMyCustomers(
         FastMap.create()
             .add("saleId", loginUserId)
+            .add("customerTypeId", customerTypeId)
             .add("customerCategoryId", customerCategoryId)
             .add("filterText", filterText)
             .add("reasonIds", reasonIds)
@@ -278,12 +281,13 @@ public class CustomerController {
   }
 
   @GetMapping("/types")
-  public List<CustomerTypeDto> getAllCustomerTypes() {
+  public PagingResponse<CustomerTypeDto> getAllCustomerTypes() {
     return customerTypeService.getAllCustomerTypes();
   }
 
   @PostMapping("/{id}/approve")
-  public void approveFromSandToGold(@PathVariable Long id, @RequestBody FastMap body) {
+  public void approveFromSandToGold(@RequestHeader("x-user-id") Long loginUserId, @PathVariable Long id, @RequestBody FastMap body) {
+    body.add("userId", loginUserId);
     customerService.approveFromSandToGold(id, body);
   }
 }

@@ -3,6 +3,7 @@ package com.dpvn.crm.user;
 import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crm.client.ReportCrudClient;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
+import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.ObjectUtil;
 import java.util.ArrayList;
@@ -78,5 +79,9 @@ public class UserService {
 
   public FastMap searchUsers(FastMap condition) {
     return crmCrudClient.searchUsers(condition);
+  }
+
+  public PagingResponse<UserDto> listAllUsers() {
+    return crmCrudClient.listAllUsers(-1, -1, List.of());
   }
 }

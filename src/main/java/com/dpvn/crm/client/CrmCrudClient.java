@@ -11,6 +11,7 @@ import com.dpvn.crmcrudservice.domain.dto.SaleCustomerStateDto;
 import com.dpvn.crmcrudservice.domain.dto.TaskDto;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
 import com.dpvn.shared.domain.dto.AddressDto;
+import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.util.FastMap;
 import java.util.List;
 import org.springframework.cache.annotation.Cacheable;
@@ -48,6 +49,12 @@ public interface CrmCrudClient {
    */
   @PostMapping("/user/search")
   FastMap searchUsers(@RequestBody FastMap condition);
+
+  @GetMapping("/user")
+  PagingResponse<UserDto> listAllUsers(
+      @RequestParam(required = false, defaultValue = "0") Integer page,
+      @RequestParam(required = false, defaultValue = "100") Integer pageSize,
+      @RequestParam(required = false) List<String> sorts);
 
   // HRM
   // ===========================================================================================================
@@ -135,7 +142,7 @@ public interface CrmCrudClient {
   // CUSTOMER-TYPE
   // ============================================================================================================
   @GetMapping("/customer-type")
-  List<CustomerTypeDto> getAllCustomerTypes();
+  PagingResponse<CustomerTypeDto> getAllCustomerTypes(@RequestParam Integer page, @RequestParam Integer pageSize);
 
   // SALE-CUSTOMER
   // ============================================================================================================
@@ -210,12 +217,13 @@ public interface CrmCrudClient {
   // ADDRESS
   // ===========================================================================================================
   @GetMapping("/address")
-  List<AddressDto> findAllAddresses();
+  PagingResponse<AddressDto> findAllAddresses(@RequestParam Integer page, @RequestParam Integer pageSize);
 
   // CAMPAIGN
   // ===========================================================================================================
   @GetMapping("/campaign")
-  List<CampaignDto> findAllCampaigns();
+  PagingResponse<CampaignDto>
+      findAllCampaigns(); // TODO: search by default all, need to update later
 
   @PostMapping("/campaign/{id}/assign-customers-to-sales")
   void assignToSaleInCampaign(@PathVariable Long id, @RequestBody FastMap body);

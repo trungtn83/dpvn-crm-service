@@ -1,6 +1,7 @@
 package com.dpvn.crm.user;
 
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
+import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.util.FastMap;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,5 +37,10 @@ public class UserController {
   @PostMapping("/search")
   public FastMap searchUsers(@RequestBody FastMap condition) {
     return userService.searchUsers(condition);
+  }
+
+  @GetMapping
+  public PagingResponse<UserDto> listAllUsers() {
+    return userService.listAllUsers();
   }
 }
