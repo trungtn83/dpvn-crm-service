@@ -1,12 +1,14 @@
 package com.dpvn.crm.customer;
 
 import com.dpvn.crm.user.UserService;
+import com.dpvn.crm.user.UserUtil;
 import com.dpvn.crmcrudservice.domain.constant.SaleCustomers;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.CustomerTypeDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerCategoryDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerStateDto;
+import com.dpvn.crmcrudservice.domain.dto.UserDto;
 import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.exception.BadRequestException;
 import com.dpvn.shared.util.FastMap;
@@ -69,6 +71,7 @@ public class CustomerController {
   public FastMap getMyCustomers(
       @RequestHeader("x-user-id") Long loginUserId, @RequestBody FastMap body) {
     boolean isOld = body.getBoolean("isOld");
+    Long saleId = body.getLong("saleId");
     Long customerTypeId = body.getLong("customerTypeId");
     Long customerCategoryId = body.getLong("customerCategoryId");
     String filterText = body.getString("filterText");
@@ -87,9 +90,10 @@ public class CustomerController {
                         SaleCustomers.Reason.MY_HANDS.stream())
                     .toList()
                 : sourceIds);
+    UserDto userDto = userService.findById(loginUserId);
     return customerService.findMyCustomers(
         FastMap.create()
-            .add("saleId", loginUserId)
+            .add("saleId", !UserUtil.isGod(userDto) ? loginUserId : saleId)
             .add("customerTypeId", customerTypeId)
             .add("customerCategoryId", customerCategoryId)
             .add("filterText", filterText)
@@ -136,13 +140,15 @@ public class CustomerController {
   @PostMapping("/task-based")
   public FastMap findTaskBasedCustomers(
       @RequestHeader("x-user-id") Long loginUserId, @RequestBody FastMap body) {
+    Long saleId = body.getLong("saleId");
     String filterText = body.getString("filterText");
     List<String> tags = body.getList("tags");
     Integer page = body.getInt(0, "page");
     Integer pageSize = body.getInt(10, "pageSize");
+    UserDto userDto = userService.findById(loginUserId);
     return customerService.findTaskBasedCustomers(
         FastMap.create()
-            .add("saleId", loginUserId)
+            .add("saleId", !UserUtil.isGod(userDto) ? loginUserId : saleId)
             .add("filterText", filterText)
             .add("tags", tags)
             .add("page", page)
