@@ -22,11 +22,7 @@ public interface WmsCrudClient {
   void syncAllOrders(@RequestBody List<OrderDto> orderDtos);
 
   /**
-   *
-   * @param body
-   *  - sellerId: Long -> idf
-   *  - page: int
-   *  - pageSize: int
+   * @param body - sellerId: Long -> idf - page: int - pageSize: int
    */
   @PostMapping("/invoice/find-by-options")
   PagingResponse<InvoiceDto> findInvoicesByOptions(@RequestBody FastMap body);
@@ -40,5 +36,4 @@ public interface WmsCrudClient {
 
   @PostMapping("/invoice/sync-all")
   void syncAllInvoices(@RequestBody List<InvoiceDto> invoiceDtos);
-
 }

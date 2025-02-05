@@ -48,7 +48,8 @@ public class CustomerService extends AbstractService {
       KiotvietServiceClient kiotvietServiceClient,
       SaleCustomerService saleCustomerService,
       WmsCrudClient wmsCrudClient,
-      WebHookHandlerService webHookHandlerService, InteractionService interactionService) {
+      WebHookHandlerService webHookHandlerService,
+      InteractionService interactionService) {
     this.crmCrudClient = crmCrudClient;
     this.kiotvietServiceClient = kiotvietServiceClient;
     this.saleCustomerService = saleCustomerService;
@@ -220,8 +221,18 @@ public class CustomerService extends AbstractService {
       SaleCustomerDto saleCustomerDto,
       boolean isActive) {
     if (saleCustomerDto.getSaleId() != null) {
+      // in case of assign to sale, need to enable this customer
+      if (!customerDto.getActive() && !Customers.Status.VERIFIED.equals(customerDto.getStatus())) {
+        CustomerDto result =
+            crmCrudClient.updateExistedCustomer(
+                customerId,
+                FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
+        saleCustomerDto.setCustomerDto(result);
+      } else {
+        saleCustomerDto.setCustomerDto(customerDto);
+      }
+
       saleCustomerDto.setCustomerId(customerDto.getId());
-      saleCustomerDto.setCustomerDto(customerDto);
       saleCustomerDto.setRelationshipType(RelationshipType.PIC);
       saleCustomerDto.setActive(true);
       saleCustomerDto.setDeleted(false);
@@ -262,8 +273,8 @@ public class CustomerService extends AbstractService {
             .filter(cr -> Customers.References.ZALO.equals(cr.getCode()))
             .map(CustomerReferenceDto::getValue)
             .toList());
-    customerDto.add("active", true);
-    customerDto.add("status", Customers.Status.VERIFIED);
+    //    customerDto.add("active", true);
+    //    customerDto.add("status", Customers.Status.VERIFIED);
     CustomerDto result = crmCrudClient.updateExistedCustomer(customerId, customerDto);
 
     assignCustomerToSaleInUpsertScreen(
@@ -295,7 +306,8 @@ public class CustomerService extends AbstractService {
     crmCrudClient.removeSaleCustomerByOptions(saleCustomerDto);
 
     if (StringUtil.isNotEmpty(content)) {
-      interactionService.createInteraction(InteractionUtil.generateSystemInteraction(saleId, customerId, null, content));
+      interactionService.createInteraction(
+          InteractionUtil.generateSystemInteraction(saleId, customerId, null, content));
     }
   }
 

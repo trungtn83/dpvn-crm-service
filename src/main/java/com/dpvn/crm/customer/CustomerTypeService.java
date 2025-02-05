@@ -4,7 +4,6 @@ import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crmcrudservice.domain.dto.CustomerTypeDto;
 import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.service.AbstractService;
-import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service

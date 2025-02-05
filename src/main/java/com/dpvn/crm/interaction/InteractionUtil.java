@@ -2,12 +2,12 @@ package com.dpvn.crm.interaction;
 
 import com.dpvn.crmcrudservice.domain.constant.Visibility;
 import com.dpvn.crmcrudservice.domain.dto.InteractionDto;
-import com.dpvn.crmcrudservice.domain.entity.Interaction;
 
 public class InteractionUtil {
   private InteractionUtil() {}
 
-  public static InteractionDto generateSystemInteraction(Long userId, Long customerId, Long campaignId, String content) {
+  public static InteractionDto generateSystemInteraction(
+      Long userId, Long customerId, Long campaignId, String content) {
     InteractionDto interaction = new InteractionDto();
     interaction.setTypeId(-1);
     interaction.setType("Hệ thống");

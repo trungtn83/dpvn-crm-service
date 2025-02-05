@@ -26,7 +26,10 @@ public class CampaignController {
   }
 
   @PostMapping("/{id}/assign-customers-to-sales")
-  public void assignCustomers(@RequestHeader("x-user-id") Long loginUserId, @PathVariable Long id, @RequestBody FastMap body) {
+  public void assignCustomers(
+      @RequestHeader("x-user-id") Long loginUserId,
+      @PathVariable Long id,
+      @RequestBody FastMap body) {
     body.add("userId", loginUserId);
     campaignService.assignCustomers(id, body);
   }

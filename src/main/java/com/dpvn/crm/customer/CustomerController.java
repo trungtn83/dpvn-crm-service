@@ -108,6 +108,10 @@ public class CustomerController {
       @RequestHeader("x-user-id") Long loginUserId, @RequestBody FastMap body) {
     String filterText = body.getString("filterText");
     List<String> tags = body.getList("tags");
+    List<String> locationCodes = body.getList("locationCodes");
+    List<Long> typeIds = body.getList("typeIds");
+    List<Integer> sourceIds = body.getList("sourceIds");
+
     Integer page = body.getInt(0, "page");
     Integer pageSize = body.getInt(10, "pageSize");
     return customerService.findInPoolCustomers(
@@ -115,6 +119,9 @@ public class CustomerController {
             .add("saleId", loginUserId)
             .add("filterText", filterText)
             .add("tags", tags)
+            .add("locationCodes", locationCodes)
+            .add("typeIds", typeIds)
+            .add("sourceIds", sourceIds)
             .add("page", page)
             .add("pageSize", pageSize));
   }
@@ -292,7 +299,10 @@ public class CustomerController {
   }
 
   @PostMapping("/{id}/approve")
-  public void approveFromSandToGold(@RequestHeader("x-user-id") Long loginUserId, @PathVariable Long id, @RequestBody FastMap body) {
+  public void approveFromSandToGold(
+      @RequestHeader("x-user-id") Long loginUserId,
+      @PathVariable Long id,
+      @RequestBody FastMap body) {
     body.add("userId", loginUserId);
     customerService.approveFromSandToGold(id, body);
   }

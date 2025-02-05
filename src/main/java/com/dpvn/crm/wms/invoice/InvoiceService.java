@@ -2,9 +2,7 @@ package com.dpvn.crm.wms.invoice;
 
 import com.dpvn.crm.client.WmsCrudClient;
 import com.dpvn.crm.customer.CustomerService;
-import com.dpvn.crm.user.UserService;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
-import com.dpvn.crmcrudservice.domain.dto.UserDto;
 import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.wmscrudservice.domain.dto.InvoiceDto;

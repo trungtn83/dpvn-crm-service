@@ -5,7 +5,6 @@ import com.dpvn.crmcrudservice.domain.dto.CampaignDto;
 import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.service.AbstractService;
 import com.dpvn.shared.util.FastMap;
-import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service

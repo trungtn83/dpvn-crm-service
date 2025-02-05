@@ -142,7 +142,8 @@ public interface CrmCrudClient {
   // CUSTOMER-TYPE
   // ============================================================================================================
   @GetMapping("/customer-type")
-  PagingResponse<CustomerTypeDto> getAllCustomerTypes(@RequestParam Integer page, @RequestParam Integer pageSize);
+  PagingResponse<CustomerTypeDto> getAllCustomerTypes(
+      @RequestParam Integer page, @RequestParam Integer pageSize);
 
   // SALE-CUSTOMER
   // ============================================================================================================
@@ -217,7 +218,8 @@ public interface CrmCrudClient {
   // ADDRESS
   // ===========================================================================================================
   @GetMapping("/address")
-  PagingResponse<AddressDto> findAllAddresses(@RequestParam Integer page, @RequestParam Integer pageSize);
+  PagingResponse<AddressDto> findAllAddresses(
+      @RequestParam Integer page, @RequestParam Integer pageSize);
 
   // CAMPAIGN
   // ===========================================================================================================

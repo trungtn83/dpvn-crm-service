@@ -2,8 +2,6 @@ package com.dpvn.crm.address;
 
 import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.shared.domain.dto.AddressDto;
-import java.util.List;
-
 import com.dpvn.shared.domain.dto.PagingResponse;
 import org.springframework.stereotype.Service;
 
