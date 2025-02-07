@@ -2,6 +2,7 @@ package com.dpvn.crm.customer;
 
 import com.dpvn.crm.user.UserService;
 import com.dpvn.crm.user.UserUtil;
+import com.dpvn.crmcrudservice.domain.constant.Customers;
 import com.dpvn.crmcrudservice.domain.constant.SaleCustomers;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.CustomerTypeDto;
@@ -228,8 +229,11 @@ public class CustomerController {
   }
 
   @DeleteMapping("/{id}")
-  public void deleteCustomer(@RequestHeader("x-user-id") Long loginUserId, @PathVariable Long id) {
-    customerService.deleteCustomer(loginUserId, id);
+  public void deleteCustomer(
+      @RequestHeader("x-user-id") Long loginUserId,
+      @PathVariable Long id,
+      @RequestParam(required = false) String owner) {
+    customerService.deleteCustomer(loginUserId, id, owner);
   }
 
   /**
@@ -282,7 +286,7 @@ public class CustomerController {
   @Deprecated
   @PostMapping("/init-relationship")
   public void initRelationship(@RequestHeader("x-user-id") Long loginUserId) {
-    if (!userService.isGod(userService.findById(loginUserId))) {
+    if (!userService.isGod(loginUserId)) {
       throw new BadRequestException("Only GOD can init relationship");
     }
     customerService.initRelationship();
@@ -311,7 +315,7 @@ public class CustomerController {
   public void digCustomer(
       @RequestHeader("x-user-id") Long loginUserId,
       @PathVariable Long id,
-      @RequestParam(required = false, defaultValue = "SANDBANK") String owner) {
+      @RequestParam(required = false, defaultValue = Customers.Owner.SANDBANK) String owner) {
     customerService.digCustomerFromOceanOrGoldmineToGold(loginUserId, id, owner);
   }
 }

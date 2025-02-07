@@ -14,4 +14,10 @@ public class UserUtil {
         && Users.Role.GOD.equals(userDto.getRole().getRoleName())
         && Users.Department.BOM.equals(userDto.getDepartment().getDepartmentName());
   }
+
+  public static boolean isDemiGod(UserDto userDto) {
+    return userDto.getActive().equals(Boolean.TRUE)
+        && !userDto.getDeleted().equals(Boolean.TRUE)
+        && Users.Role.DEMIGOD.equals(userDto.getRole().getRoleName());
+  }
 }

@@ -277,32 +277,45 @@ public class CustomerService extends AbstractService {
             .filter(cr -> Customers.References.ZALO.equals(cr.getCode()))
             .map(CustomerReferenceDto::getValue)
             .toList());
-    //    customerDto.add("active", true);
-    //    customerDto.add("status", Customers.Status.VERIFIED);
     CustomerDto result = crmCrudClient.updateExistedCustomer(customerId, customerDto);
 
     assignCustomerToSaleInUpsertScreen(
         userId, customerId, result, extractSaleCustomerFromBody(customerDto), isActive);
   }
 
-  public void deleteCustomer(Long saleId, Long customerId) {
+  public void deleteCustomer(Long saleId, Long customerId, String owner) {
     CustomerDto dbCustomerDto = findCustomerById(customerId);
     if (dbCustomerDto == null) {
       throw new BadRequestException(String.format("Customer with id %s not found", customerId));
     }
 
-    String content = "Không đào được khách hàng này tiếp, đưa về ";
+    String content = "Không đào được khách hàng này tiếp, đưa lại về ";
 
-    if (StringUtil.isEmpty(dbCustomerDto.getMobilePhone())) {
+    //    if (StringUtil.isEmpty(dbCustomerDto.getMobilePhone())) {
+    //      crmCrudClient.deleteCustomer(customerId);
+    //      content = null;
+    //    } else if (Customers.Status.VERIFYING.equals(dbCustomerDto.getStatus())) {
+    //      // xoá khi dược assign từ màn hình bãi cát, chưa có verìy nên status= VẺIFYING
+    //      crmCrudClient.updateExistedCustomer(
+    //          customerId, FastMap.create().add("status", null).add("active", false));
+    //      content += "Bãi cát";
+    //    } else {
+    //      content += "Kho vàng";
+    //    }
+
+    // delete forever when GOD do it without owner, or no mobile phone (trash data)
+    if ((userService.isGod(saleId) && StringUtil.isEmpty(owner))
+        || StringUtil.isEmpty(dbCustomerDto.getMobilePhone())) {
       crmCrudClient.deleteCustomer(customerId);
       content = null;
-    } else if (Customers.Status.VERIFYING.equals(dbCustomerDto.getStatus())) {
-      // xoá khi dược assign từ màn hình bãi cát, chưa có verìy nên status= VẺIFYING
-      crmCrudClient.updateExistedCustomer(
-          customerId, FastMap.create().add("status", null).add("active", false));
-      content += "Bãi cát";
     } else {
-      content += "Kho vàng";
+      if (Customers.Owner.GOLDMINE.equals(owner)) {
+        content += "Kho vàng";
+      } else {
+        crmCrudClient.updateExistedCustomer(
+            customerId, FastMap.create().add("status", null).add("active", false));
+        content += "Bãi cát";
+      }
     }
     SaleCustomerDto saleCustomerDto = new SaleCustomerDto();
     saleCustomerDto.setSaleId(saleId);
@@ -348,8 +361,6 @@ public class CustomerService extends AbstractService {
     CustomerDto customerDto = mySaleCustomerDto.getCustomerDto();
     mySaleCustomerDto.setCustomerDto(null);
 
-    boolean isGod = userService.isGod(userId);
-
     return FastMap.create()
         .add("customer", customerDto)
         .add("saleCustomer", mySaleCustomerDto)
@@ -359,7 +370,8 @@ public class CustomerService extends AbstractService {
             SaleCustomers.Reason.MY_OWN_HANDS.contains(mySaleCustomerDto.getReasonId()))
         .add(
             "owner",
-            CustomerUtil.getCustomerOwner(isGod ? null : userId, customerDto, saleCustomerDtos));
+            CustomerUtil.getCustomerOwner(
+                userService.isDemiGod(userId) ? null : userId, customerDto, saleCustomerDtos));
   }
 
   /**
@@ -547,7 +559,7 @@ public class CustomerService extends AbstractService {
     // TODO: validate (far future)
 
     // update customer active if it comes rom SANDBANK
-    if ("SANDBANK".equals(owner)) {
+    if (Customers.Owner.SANDBANK.equals(owner)) {
       crmCrudClient.updateExistedCustomer(
           customerId,
           FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
@@ -562,12 +574,17 @@ public class CustomerService extends AbstractService {
     saleCustomerDto.setActive(true);
     saleCustomerDto.setDeleted(false);
     saleCustomerDto.setReasonId(
-        "GOLDMINE".equals(owner)
+        Customers.Owner.GOLDMINE.equals(owner)
             ? SaleCustomers.Reason.BY_MY_HAND_FROM_GOLDMINE
             : SaleCustomers.Reason.BY_MY_HAND_FROM_SANDBANK);
     saleCustomerDto.setReasonRef(saleId.toString());
-    saleCustomerDto.setReasonNote("Đào khách hàng từ " + owner);
+    saleCustomerDto.setReasonNote("Đào khách hàng từ " + Customers.Owners.get(owner));
 
     saleCustomerService.createNewSaleCustomer(saleCustomerDto);
+
+    // inject interaction for this customer
+    interactionService.createInteraction(
+        InteractionUtil.generateSystemInteraction(
+            saleId, customerId, null, "Đào khách hàng từ " + Customers.Owners.get(owner)));
   }
 }

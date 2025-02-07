@@ -1,9 +1,11 @@
 package com.dpvn.crm.customer;
 
+import com.dpvn.crmcrudservice.domain.constant.Customers;
 import com.dpvn.crmcrudservice.domain.constant.SaleCustomers;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
 import com.dpvn.shared.util.FastMap;
+import com.dpvn.shared.util.ListUtil;
 import java.util.List;
 
 public class CustomerUtil {
@@ -22,7 +24,9 @@ public class CustomerUtil {
             .findFirst()
             .orElse(null);
     if (treasure != null) {
-      return FastMap.create().add("ownerId", treasure.getSaleId()).add("ownerName", "TREASURE");
+      return FastMap.create()
+          .add("ownerId", treasure.getSaleId())
+          .add("ownerName", Customers.Owner.TREASURE);
     }
     SaleCustomerDto gold =
         saleCustomerDtos.stream()
@@ -30,24 +34,26 @@ public class CustomerUtil {
             .findFirst()
             .orElse(null);
     if (gold != null) {
-      return FastMap.create().add("ownerId", gold.getSaleId()).add("ownerName", "GOLD");
+      return FastMap.create()
+          .add("ownerId", gold.getSaleId())
+          .add("ownerName", Customers.Owner.GOLD);
     }
-    SaleCustomerDto selfDig =
+    List<SaleCustomerDto> selfDigs =
         saleCustomerDtos.stream()
             .filter(
                 s -> s.getRelationshipType() == 1 && List.of(70, 71, 72).contains(s.getReasonId()))
-            .findFirst()
-            .orElse(null);
-    if (selfDig != null) {
-      if (selfDig.getReasonId() == 70 || selfDig.getReasonId() == 71) {
-        return FastMap.create().add("ownerId", selfDig.getSaleId()).add("ownerName", "GOLDMINE");
+            .toList();
+    if (ListUtil.isNotEmpty(selfDigs)) {
+      List<Long> saleIds = selfDigs.stream().map(SaleCustomerDto::getSaleId).toList();
+      if (selfDigs.get(0).getReasonId() == 70 || selfDigs.get(0).getReasonId() == 71) {
+        return FastMap.create().add("ownerId", saleIds).add("ownerName", Customers.Owner.GOLDMINE);
       }
-      return FastMap.create().add("ownerId", selfDig.getSaleId()).add("ownerName", "SANDBANK");
+      return FastMap.create().add("ownerId", saleIds).add("ownerName", Customers.Owner.SANDBANK);
     }
     if (!customerDto.getActive()) {
-      return FastMap.create().add("ownerId", null).add("ownerName", "SANDBANK");
+      return FastMap.create().add("ownerId", null).add("ownerName", Customers.Owner.SANDBANK);
     }
-    return FastMap.create().add("ownerId", null).add("ownerName", "GOLDMINE");
+    return FastMap.create().add("ownerId", null).add("ownerName", Customers.Owner.GOLDMINE);
   }
 
   public static FastMap getCustomerOwner(

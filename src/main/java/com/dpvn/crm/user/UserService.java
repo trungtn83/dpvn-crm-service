@@ -37,12 +37,12 @@ public class UserService {
       return new ArrayList<>();
     }
 
-    if (isGod(user)) {
+    if (UserUtil.isGod(user)) {
       return userDtos;
     }
 
     if (isAdmin(user)) {
-      return userDtos.stream().filter(ut -> !isGod(ut)).toList();
+      return userDtos.stream().filter(ut -> !UserUtil.isGod(ut)).toList();
     }
     return userDtos.stream()
         .filter(ut -> ObjectUtil.equals(ut.getDepartmentId(), user.getDepartmentId()))
@@ -50,11 +50,13 @@ public class UserService {
   }
 
   public boolean isGod(Long userId) {
-    return isGod(findById(userId));
+    UserDto userDto = findById(userId);
+    return UserUtil.isGod(userDto);
   }
 
-  public boolean isGod(UserDto userDto) {
-    return "GOD".equals(userDto.getRole().getRoleName());
+  public boolean isDemiGod(Long userId) {
+    UserDto userDto = findById(userId);
+    return UserUtil.isDemiGod(userDto);
   }
 
   private boolean isAdmin(UserDto userDto) {
