@@ -5,6 +5,7 @@ import com.dpvn.crm.client.KiotvietServiceClient;
 import com.dpvn.crm.client.WmsCrudClient;
 import com.dpvn.crm.interaction.InteractionService;
 import com.dpvn.crm.interaction.InteractionUtil;
+import com.dpvn.crm.user.UserService;
 import com.dpvn.crmcrudservice.domain.constant.Customers;
 import com.dpvn.crmcrudservice.domain.constant.RelationshipType;
 import com.dpvn.crmcrudservice.domain.constant.SaleCustomers;
@@ -42,6 +43,7 @@ public class CustomerService extends AbstractService {
   private final WmsCrudClient wmsCrudClient;
   private final WebHookHandlerService webHookHandlerService;
   private final InteractionService interactionService;
+  private final UserService userService;
 
   public CustomerService(
       CrmCrudClient crmCrudClient,
@@ -49,13 +51,15 @@ public class CustomerService extends AbstractService {
       SaleCustomerService saleCustomerService,
       WmsCrudClient wmsCrudClient,
       WebHookHandlerService webHookHandlerService,
-      InteractionService interactionService) {
+      InteractionService interactionService,
+      UserService userService) {
     this.crmCrudClient = crmCrudClient;
     this.kiotvietServiceClient = kiotvietServiceClient;
     this.saleCustomerService = saleCustomerService;
     this.wmsCrudClient = wmsCrudClient;
     this.webHookHandlerService = webHookHandlerService;
     this.interactionService = interactionService;
+    this.userService = userService;
   }
 
   private void validateCustomerMobilePhones(
@@ -241,8 +245,8 @@ public class CustomerService extends AbstractService {
             customerId == null
                 ? SaleCustomers.Reason.BY_MY_HAND
                 : (isActive
-                    ? SaleCustomers.Reason.BY_MY_HAND_FROM_POOL
-                    : SaleCustomers.Reason.BY_MY_HAND_FROM_OCEAN);
+                    ? SaleCustomers.Reason.BY_MY_HAND_FROM_GOLDMINE
+                    : SaleCustomers.Reason.BY_MY_HAND_FROM_SANDBANK);
         saleCustomerDto.setReasonId(reasonId);
         saleCustomerDto.setReasonRef(userId.toString());
         saleCustomerDto.setReasonNote("Tạo khách hàng từ màn hình tạo mới");
@@ -324,18 +328,15 @@ public class CustomerService extends AbstractService {
   }
 
   public FastMap findCustomerOfSale(Long userId, Long customerId) {
-    FastMap condition =
-        FastMap.create().add("saleId", userId).add("customerIds", List.of(customerId));
-    List<SaleCustomerDto> saleCustomerDtos =
-        crmCrudClient.findSaleCustomersByOptions(condition).stream()
-            .filter(
-                sc -> sc.getAvailableTo() == null || sc.getAvailableTo().isAfter(DateUtil.now()))
-            .toList();
+    FastMap condition = FastMap.create().add("customerIds", List.of(customerId));
+    List<SaleCustomerDto> saleCustomerDtos = crmCrudClient.findSaleCustomersByOptions(condition);
+    List<SaleCustomerDto> mySaleCustomerDtos =
+        saleCustomerDtos.stream().filter(sc -> sc.getSaleId().equals(userId)).toList();
 
     SaleCustomerDto mySaleCustomerDto =
-        ListUtil.isEmpty(saleCustomerDtos)
+        ListUtil.isEmpty(mySaleCustomerDtos)
             ? initSaleCustomerDto(customerId)
-            : saleCustomerDtos.get(0);
+            : mySaleCustomerDtos.get(0);
     List<SaleCustomerStateDto> lastStates =
         crmCrudClient.findLatestBySaleIdAndCustomerIds(
             FastMap.create()
@@ -346,13 +347,19 @@ public class CustomerService extends AbstractService {
 
     CustomerDto customerDto = mySaleCustomerDto.getCustomerDto();
     mySaleCustomerDto.setCustomerDto(null);
+
+    boolean isGod = userService.isGod(userId);
+
     return FastMap.create()
         .add("customer", customerDto)
         .add("saleCustomer", mySaleCustomerDto)
         .add("lastState", myLastStateDto)
         .add(
             "isMyCustomer",
-            SaleCustomers.Reason.MY_OWN_HANDS.contains(mySaleCustomerDto.getReasonId()));
+            SaleCustomers.Reason.MY_OWN_HANDS.contains(mySaleCustomerDto.getReasonId()))
+        .add(
+            "owner",
+            CustomerUtil.getCustomerOwner(isGod ? null : userId, customerDto, saleCustomerDtos));
   }
 
   /**
@@ -533,5 +540,34 @@ public class CustomerService extends AbstractService {
 
   public void approveFromSandToGold(Long id, FastMap body) {
     crmCrudClient.approveCustomerFromSandToGold(id, body);
+  }
+
+  public void digCustomerFromOceanOrGoldmineToGold(Long saleId, Long customerId, String owner) {
+    CustomerDto customerDto = crmCrudClient.findCustomerById(customerId);
+    // TODO: validate (far future)
+
+    // update customer active if it comes rom SANDBANK
+    if ("SANDBANK".equals(owner)) {
+      crmCrudClient.updateExistedCustomer(
+          customerId,
+          FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
+    }
+
+    // init relationship
+    SaleCustomerDto saleCustomerDto = new SaleCustomerDto();
+    saleCustomerDto.setSaleId(saleId);
+    saleCustomerDto.setCustomerId(customerId);
+    saleCustomerDto.setCustomerDto(customerDto);
+    saleCustomerDto.setRelationshipType(RelationshipType.PIC);
+    saleCustomerDto.setActive(true);
+    saleCustomerDto.setDeleted(false);
+    saleCustomerDto.setReasonId(
+        "GOLDMINE".equals(owner)
+            ? SaleCustomers.Reason.BY_MY_HAND_FROM_GOLDMINE
+            : SaleCustomers.Reason.BY_MY_HAND_FROM_SANDBANK);
+    saleCustomerDto.setReasonRef(saleId.toString());
+    saleCustomerDto.setReasonNote("Đào khách hàng từ " + owner);
+
+    saleCustomerService.createNewSaleCustomer(saleCustomerDto);
   }
 }

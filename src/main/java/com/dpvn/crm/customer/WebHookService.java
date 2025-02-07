@@ -47,14 +47,6 @@ public class WebHookService extends AbstractService {
     long offset = message.offset();
     long timestamp = message.timestamp();
 
-    LOGGER.info(
-        value,
-        "Handled order message: [key = {}, partition = {}, offset = {}, timestamp = {}]]",
-        key,
-        partition,
-        offset,
-        timestamp);
-
     processOrder(value);
   }
 
@@ -67,14 +59,6 @@ public class WebHookService extends AbstractService {
     long offset = message.offset();
     long timestamp = message.timestamp();
 
-    LOGGER.info(
-        value,
-        "Handled invoice message: [key = {}, partition = {}, offset = {}, timestamp = {}]]",
-        key,
-        partition,
-        offset,
-        timestamp);
-
     processInvoice(value);
   }
 
@@ -86,14 +70,6 @@ public class WebHookService extends AbstractService {
     int partition = message.partition();
     long offset = message.offset();
     long timestamp = message.timestamp();
-
-    LOGGER.info(
-        value,
-        "Handled customer message: [key = {}, partition = {}, offset = {}, timestamp = {}]]",
-        key,
-        partition,
-        offset,
-        timestamp);
 
     // TODO: sync one customer by call back to kiotviet
     // data from hook does not have enough information to sync customer (wardname, extra phones...)

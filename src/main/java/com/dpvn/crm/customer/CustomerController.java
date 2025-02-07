@@ -306,4 +306,12 @@ public class CustomerController {
     body.add("userId", loginUserId);
     customerService.approveFromSandToGold(id, body);
   }
+
+  @PostMapping("/{id}/dig")
+  public void digCustomer(
+      @RequestHeader("x-user-id") Long loginUserId,
+      @PathVariable Long id,
+      @RequestParam(required = false, defaultValue = "SANDBANK") String owner) {
+    customerService.digCustomerFromOceanOrGoldmineToGold(loginUserId, id, owner);
+  }
 }

@@ -49,6 +49,10 @@ public class UserService {
         .toList();
   }
 
+  public boolean isGod(Long userId) {
+    return isGod(findById(userId));
+  }
+
   public boolean isGod(UserDto userDto) {
     return "GOD".equals(userDto.getRole().getRoleName());
   }
