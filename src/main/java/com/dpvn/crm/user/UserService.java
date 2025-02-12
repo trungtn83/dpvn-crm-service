@@ -27,7 +27,8 @@ public class UserService {
   }
 
   public List<UserDto> findUsersByLeaderId(Long userId) {
-    List<UserDto> userDtos = crmCrudClient.getUsers().stream().filter(UserDto::getActive).toList();
+    List<UserDto> userDtos =
+        crmCrudClient.getUsers(-1, -1).getRows().stream().filter(UserDto::getActive).toList();
     UserDto user =
         userDtos.stream()
             .filter(userDto -> userDto.getId().equals(userId))

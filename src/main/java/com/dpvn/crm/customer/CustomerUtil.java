@@ -25,7 +25,7 @@ public class CustomerUtil {
             .orElse(null);
     if (treasure != null) {
       return FastMap.create()
-          .add("ownerId", treasure.getSaleId())
+          .add("ownerId", List.of(treasure.getSaleId()))
           .add("ownerName", Customers.Owner.TREASURE);
     }
     SaleCustomerDto gold =
@@ -35,7 +35,7 @@ public class CustomerUtil {
             .orElse(null);
     if (gold != null) {
       return FastMap.create()
-          .add("ownerId", gold.getSaleId())
+          .add("ownerId", List.of(gold.getSaleId()))
           .add("ownerName", Customers.Owner.GOLD);
     }
     List<SaleCustomerDto> selfDigs =
@@ -59,8 +59,8 @@ public class CustomerUtil {
   public static FastMap getCustomerOwner(
       Long saleId, CustomerDto customerDto, List<SaleCustomerDto> saleCustomerDtos) {
     FastMap owner = getCustomerOwner(customerDto, saleCustomerDtos);
-    Long ownerId = owner.getLong("ownerId");
-    boolean isViewable = saleId == null || ownerId == null || ownerId.equals(saleId);
+    List<Long> ownerId = owner.getListClass("ownerId", Long.class);
+    boolean isViewable = saleId == null || ownerId == null || ownerId.contains(saleId);
     return owner.add("isViewable", isViewable);
   }
 }

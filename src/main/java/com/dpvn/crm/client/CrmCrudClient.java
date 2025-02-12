@@ -14,7 +14,6 @@ import com.dpvn.shared.domain.dto.AddressDto;
 import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.util.FastMap;
 import java.util.List;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,9 +29,10 @@ public interface CrmCrudClient {
   @GetMapping("/user/{id}")
   UserDto getUserById(@PathVariable("id") Long id);
 
-  @Cacheable(value = "users", key = "#root.methodName")
   @GetMapping("/user")
-  List<UserDto> getUsers();
+  PagingResponse<UserDto> getUsers(
+      @RequestParam(required = false, defaultValue = "0") Integer page,
+      @RequestParam(required = false, defaultValue = "100") Integer pageSize);
 
   @PostMapping("/user/find-by-ids")
   List<UserDto> findUsersByIds(@RequestBody List<Long> userIds);

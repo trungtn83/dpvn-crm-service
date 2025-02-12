@@ -110,19 +110,22 @@ public class WebHookService extends AbstractService {
                     .getData()
                     .forEach(
                         orderDto -> {
-                          LOGGER.info("Processing update for order {}", orderDto.getCode());
+                          LOGGER.info(
+                              "Processing update for order {} = [{}]",
+                              orderDto.getCode(),
+                              ObjectUtil.writeValueAsString(orderDto));
                           try {
-                            // update order in database of wms from webhook
                             // fuk kiot, send missing data, have to call to web to sync
-                            //                            wmcCrudClient.syncAllOrders(
-                            //
-                            // List.of(transformToOrderDtoFromWebHook(orderDto)));
                             kiotvietServiceClient.syncOrder(orderDto.getCode());
 
                             // process order hook to update customer relationship
                             processOrderHookDto(orderDto);
                           } catch (Exception e) {
-                            LOGGER.error("Error processing order {}", orderDto.getCode(), e);
+                            LOGGER.error(
+                                "Error processing order {}: {}",
+                                orderDto.getCode(),
+                                e.getLocalizedMessage(),
+                                e);
                           }
                         }));
   }
@@ -163,17 +166,24 @@ public class WebHookService extends AbstractService {
                     .getData()
                     .forEach(
                         invoiceDto -> {
-                          LOGGER.info("Processing update for invoice {}", invoiceDto.getCode());
+                          LOGGER.info(
+                              "Processing update for invoice {} = [{}]",
+                              invoiceDto.getCode(),
+                              ObjectUtil.writeValueAsString(invoiceDto));
                           try {
                             // TODO: fuk kiot, send missing data, have to call to web to sync
                             // update order in database of wms from webhook
-                            // wmcCrudClient.syncAllInvoices(List.of(transformToInvoiceDtoFromWebHook(invoiceDto)));
                             kiotvietServiceClient.syncInvoice(invoiceDto.getCode());
 
                             // process order hook to update customer relationship
                             processInvoiceHookDto(invoiceDto);
                           } catch (Exception e) {
-                            LOGGER.error("Error processing invoice {}", invoiceDto.getCode(), e);
+                            LOGGER.error(
+                                "Error processing invoice {}: [{}] with error: {}",
+                                invoiceDto.getCode(),
+                                ObjectUtil.writeValueAsString(invoiceDto),
+                                e.getLocalizedMessage(),
+                                e);
                           }
                         }));
   }
@@ -183,11 +193,18 @@ public class WebHookService extends AbstractService {
     String code = invoiceHookDto.getCode();
     Instant purchasedDate = invoiceHookDto.getPurchaseDate();
     Integer status = invoiceHookDto.getStatus();
-    Integer deliveryStatus = invoiceHookDto.getInvoiceDelivery().getStatus();
+    Integer deliveryStatus =
+        invoiceHookDto.getInvoiceDelivery() == null
+            ? KvStatus.DeliveryStatus.WAIT_PROCESS.getId()
+            : invoiceHookDto.getInvoiceDelivery().getStatus();
     UserDto sale = userService.findUserByKvUserId(invoiceHookDto.getSoldById());
     CustomerDto customer =
         customerService.findCustomerByKvCustomerId(invoiceHookDto.getCustomerId());
 
+    LOGGER.info(
+        "Process inside invoice {} with content: {}",
+        invoiceHookDto.getCode(),
+        ObjectUtil.writeValueAsString(invoiceHookDto));
     if (Objects.equals(status, KvStatus.Invoice.DELIVERING.getId())
         && Objects.equals(deliveryStatus, KvStatus.DeliveryStatus.WAIT_PROCESS.getId())) {
       webHookHandlerService.handleInProgressInvoice(sale, customer, code, purchasedDate);
@@ -200,7 +217,9 @@ public class WebHookService extends AbstractService {
         && Objects.equals(deliveryStatus, KvStatus.DeliveryStatus.CANCELLED.getId())) {
       webHookHandlerService.handleCancelledInvoice(sale, customer, code);
       LOGGER.info("Processed update for CANCELLED invoice {}", invoiceHookDto.getCode());
-    } else {
+    } else if (Objects.equals(status, KvStatus.Invoice.COMPLETED.getId())
+        || Objects.equals(deliveryStatus, KvStatus.DeliveryStatus.DELIVERED.getId())) {
+      webHookHandlerService.handleCompletedInvoice(sale, customer, code, purchasedDate);
       LOGGER.info("Processed update for NO NEED ANY ACTION invoice {}", invoiceHookDto.getCode());
     }
   }

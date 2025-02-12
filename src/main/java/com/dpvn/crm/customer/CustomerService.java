@@ -478,7 +478,8 @@ public class CustomerService extends AbstractService {
       List<FastMap> lastCompletedInvoices =
           findLastInvoiceOfCustomerByStatus(Invoices.Status.COMPLETED, idfs);
       Map<Long, UserDto> sellers =
-          crmCrudClient.getUsers().stream().collect(Collectors.toMap(UserDto::getIdf, u -> u));
+          crmCrudClient.getUsers(-1, -1).getRows().stream()
+              .collect(Collectors.toMap(UserDto::getIdf, u -> u));
       customerDtos.forEach(
           customerDto -> {
             lastTempOrders.stream()
