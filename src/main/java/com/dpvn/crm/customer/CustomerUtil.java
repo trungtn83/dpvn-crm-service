@@ -60,7 +60,13 @@ public class CustomerUtil {
       Long saleId, CustomerDto customerDto, List<SaleCustomerDto> saleCustomerDtos) {
     FastMap owner = getCustomerOwner(customerDto, saleCustomerDtos);
     List<Long> ownerId = owner.getListClass("ownerId", Long.class);
-    boolean isViewable = saleId == null || ownerId == null || ownerId.contains(saleId);
+    String ownerName = owner.getString("ownerName");
+    boolean isViewable =
+        saleId == null // is god
+            || (List.of(Customers.Owner.SANDBANK, Customers.Owner.GOLDMINE)
+                .contains(ownerName)) // is in bãi cát hoặc mỏ vàng
+            || ListUtil.isEmpty(ownerId) // not belong to anyone
+            || ownerId.contains(saleId); // belong to me
     return owner.add("isViewable", isViewable);
   }
 }

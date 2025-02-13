@@ -560,11 +560,12 @@ public class CustomerService extends AbstractService {
     // TODO: validate (far future)
 
     // update customer active if it comes rom SANDBANK
-    if (Customers.Owner.SANDBANK.equals(owner)) {
-      crmCrudClient.updateExistedCustomer(
-          customerId,
-          FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
-    }
+    // TODO: remove to handle case sale 2 can find this customer when sale 1 dig it
+//    if (Customers.Owner.SANDBANK.equals(owner)) {
+//      crmCrudClient.updateExistedCustomer(
+//          customerId,
+//          FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
+//    }
 
     // init relationship
     SaleCustomerDto saleCustomerDto = new SaleCustomerDto();
