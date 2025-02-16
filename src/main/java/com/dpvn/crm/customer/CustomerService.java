@@ -163,25 +163,45 @@ public class CustomerService extends AbstractService {
     CustomerDto customerDto = extractCustomerFromBody(body);
     SaleCustomerDto saleCustomerDto = extractSaleCustomerFromBody(body);
 
-    boolean isActive = customerDto.getActive();
-    // TODO: call to function validateMobilePhoneNewCustomer first to check if mobile phone is valid
-    customerDto.setActive(true);
-    customerDto.setStatus(Customers.Status.VERIFIED);
-    CustomerDto result =
-        customerDto.getId() == null
-            ? crmCrudClient.createNewCustomer(customerDto)
-            : crmCrudClient.updateExistedCustomer(
-                customerDto.getId(),
-                FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
-    // auto generate code when user leave it empty
-    if (StringUtil.isEmpty(result.getCustomerCode())) {
-      result =
-          crmCrudClient.updateExistedCustomer(
-              result.getId(),
-              FastMap.create().add("customerCode", String.format("KHA%09d", result.getId())));
+    // in case of create new customer but id existed
+    // that mean sale 2 find also customer that created (tự đào) by sale 1
+    if (customerDto.getId() != null) {
+      CustomerDto existedCustomer = crmCrudClient.findCustomerById(customerDto.getId());
+      if (existedCustomer == null) {
+        throw new BadRequestException(
+            String.format("Customer with id %s not found", customerDto.getId()));
+      }
+      saleCustomerDto.setCustomerId(customerDto.getId());
+      saleCustomerDto.setCustomerDto(existedCustomer);
+      saleCustomerDto.setRelationshipType(RelationshipType.PIC);
+      saleCustomerDto.setSaleId(userId);
+      saleCustomerDto.setActive(true);
+      saleCustomerDto.setDeleted(false);
+      saleCustomerDto.setReasonId(SaleCustomers.Reason.BY_MY_HAND);
+      saleCustomerDto.setReasonRef(userId.toString());
+      saleCustomerDto.setReasonNote("Đào được khách này nhưng người khác đã đào trước rồi");
+      saleCustomerService.createNewSaleCustomer(saleCustomerDto);
+    } else {
+      boolean isActive = customerDto.getActive();
+      // TODO: call to function validateMobilePhoneNewCustomer first to check if mobile phone is valid
+      customerDto.setActive(true);
+      customerDto.setStatus(Customers.Status.VERIFIED);
+      CustomerDto result =
+          customerDto.getId() == null
+              ? crmCrudClient.createNewCustomer(customerDto)
+              : crmCrudClient.updateExistedCustomer(
+              customerDto.getId(),
+              FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
+      // auto generate code when user leave it empty
+      if (StringUtil.isEmpty(result.getCustomerCode())) {
+        result =
+            crmCrudClient.updateExistedCustomer(
+                result.getId(),
+                FastMap.create().add("customerCode", String.format("KHA%09d", result.getId())));
+      }
+      assignCustomerToSaleInUpsertScreen(
+          userId, customerDto.getId(), result, saleCustomerDto, isActive);
     }
-    assignCustomerToSaleInUpsertScreen(
-        userId, customerDto.getId(), result, saleCustomerDto, isActive);
   }
 
   private CustomerDto extractCustomerFromBody(FastMap body) {
@@ -561,11 +581,11 @@ public class CustomerService extends AbstractService {
 
     // update customer active if it comes rom SANDBANK
     // TODO: remove to handle case sale 2 can find this customer when sale 1 dig it
-//    if (Customers.Owner.SANDBANK.equals(owner)) {
-//      crmCrudClient.updateExistedCustomer(
-//          customerId,
-//          FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
-//    }
+    //    if (Customers.Owner.SANDBANK.equals(owner)) {
+    //      crmCrudClient.updateExistedCustomer(
+    //          customerId,
+    //          FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
+    //    }
 
     // init relationship
     SaleCustomerDto saleCustomerDto = new SaleCustomerDto();
