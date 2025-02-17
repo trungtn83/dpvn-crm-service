@@ -128,7 +128,7 @@ public class CustomerController {
   }
 
   @PostMapping("/in-ocean")
-  public FastMap findInOceanCustomers(@RequestBody FastMap body) {
+  public FastMap findInOceanCustomers(@RequestHeader("x-user-id") Long loginUserId, @RequestBody FastMap body) {
     String filterText = body.getString("filterText");
     List<String> locationCodes = body.getList("locationCodes");
     List<Long> typeIds = body.getList("typeIds");
@@ -137,6 +137,7 @@ public class CustomerController {
     Integer pageSize = body.getInt(10, "pageSize");
     return customerService.findInOceanCustomers(
         FastMap.create()
+            .add("saleId", loginUserId)
             .add("filterText", filterText)
             .add("locationCodes", locationCodes)
             .add("typeIds", typeIds)

@@ -183,15 +183,16 @@ public class CustomerService extends AbstractService {
       saleCustomerService.createNewSaleCustomer(saleCustomerDto);
     } else {
       boolean isActive = customerDto.getActive();
-      // TODO: call to function validateMobilePhoneNewCustomer first to check if mobile phone is valid
+      // TODO: call to function validateMobilePhoneNewCustomer first to check if mobile phone is
+      // valid
       customerDto.setActive(true);
       customerDto.setStatus(Customers.Status.VERIFIED);
       CustomerDto result =
           customerDto.getId() == null
               ? crmCrudClient.createNewCustomer(customerDto)
               : crmCrudClient.updateExistedCustomer(
-              customerDto.getId(),
-              FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
+                  customerDto.getId(),
+                  FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
       // auto generate code when user leave it empty
       if (StringUtil.isEmpty(result.getCustomerCode())) {
         result =
