@@ -60,6 +60,7 @@ spotless {
         target '**/*.java'
         googleJavaFormat("1.22.0")
         importOrder()
+        toggleOffOn('/*', '*/')
     }
 }
 

@@ -12,8 +12,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 @FeignClient(name = "wms-crud-service", contextId = "wms-crud-service-client")
 public interface WmsCrudClient {
   /**
-   * @param body - status: String - customerIds: List<Long>
-   * @return - customerId: Long - orderCode: String - purchaseDate: Instant - sellerId: Long
+   * @param body
+   * - status: String
+   * - customerIds: List<Long>
+   * @return
+   * - customerId: Long
+   * - orderCode: String
+   * - purchaseDate: Instant
+   * - sellerId: Long
    */
   @PostMapping("/order/find-last-purchase-by-status-and-customers")
   List<FastMap> findLastPurchaseOrderByStatusAndCustomers(@RequestBody FastMap body);
@@ -22,14 +28,27 @@ public interface WmsCrudClient {
   void syncAllOrders(@RequestBody List<OrderDto> orderDtos);
 
   /**
-   * @param body - sellerId: Long -> idf - page: int - pageSize: int
+   * code: String
+   * sellerId: Long -> idf
+   * customerId: Long -> idf
+   * statuses: List<String>
+   * from: String -> LocalDate
+   * to: String -> LocalDate
+   * page: int
+   * pageSize: int
    */
   @PostMapping("/invoice/find-by-options")
   PagingResponse<InvoiceDto> findInvoicesByOptions(@RequestBody FastMap body);
 
   /**
-   * @param body - status: String - customerIds: List<Long>
-   * @return - customerId: Long - orderCode: String - purchaseDate: Instant - sellerId: Long
+   * @param body
+   * - status: String
+   * - customerIds: List<Long>
+   * @return
+   * - customerId: Long
+   * - orderCode: String
+   * - purchaseDate: Instant
+   * - sellerId: Long
    */
   @PostMapping("/invoice/find-last-purchase-by-status-and-customers")
   List<FastMap> findLastPurchaseInvoiceByStatusAndCustomers(@RequestBody FastMap body);

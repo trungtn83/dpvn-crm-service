@@ -1,6 +1,8 @@
 package com.dpvn.crm.customer;
 
+import com.ctc.wstx.shaded.msv_core.reader.datatype.xsd.FacetState;
 import com.dpvn.crm.client.KiotvietServiceClient;
+import com.dpvn.crm.client.WmsCrudClient;
 import com.dpvn.crm.customer.dto.InvoiceHookDto;
 import com.dpvn.crm.customer.dto.OrderHookDto;
 import com.dpvn.crm.customer.dto.PayloadDto;
@@ -8,13 +10,17 @@ import com.dpvn.crm.user.UserService;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
 import com.dpvn.reportcrudservice.domain.constant.KvStatus;
+import com.dpvn.shared.domain.constant.Globals;
 import com.dpvn.shared.exception.BadRequestException;
 import com.dpvn.shared.service.AbstractService;
+import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.ListUtil;
 import com.dpvn.shared.util.ObjectUtil;
 import com.dpvn.webhookhandler.domain.Topics;
+import com.dpvn.wmscrudservice.domain.dto.InvoiceDto;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -26,16 +32,18 @@ public class WebHookService extends AbstractService {
   private final CustomerService customerService;
   private final WebHookHandlerService webHookHandlerService;
   private final KiotvietServiceClient kiotvietServiceClient;
+  private final WmsCrudClient wmsCrudClient;
 
   public WebHookService(
       UserService userService,
       CustomerService customerService,
       WebHookHandlerService webHookHandlerService,
-      KiotvietServiceClient kiotvietServiceClient) {
+      KiotvietServiceClient kiotvietServiceClient, WmsCrudClient wmsCrudClient) {
     this.userService = userService;
     this.customerService = customerService;
     this.webHookHandlerService = webHookHandlerService;
     this.kiotvietServiceClient = kiotvietServiceClient;
+    this.wmsCrudClient = wmsCrudClient;
   }
 
   @KafkaListener(topics = Topics.KV_UPDATE_ORDER, groupId = "crm-group")
@@ -186,6 +194,30 @@ public class WebHookService extends AbstractService {
                                 e);
                           }
                         }));
+  }
+
+  public FastMap reprocessInvoice(String invoiceCode) {
+    kiotvietServiceClient.syncInvoice(invoiceCode);
+
+    FastMap params = FastMap.create().add("code", invoiceCode).add("page", 0).add("pageSize", Globals.Paging.FETCHING_PAGE_SIZE);
+    List<InvoiceDto> invoiceDtos = wmsCrudClient.findInvoicesByOptions(params).getRows();
+    if (ListUtil.isEmpty(invoiceDtos)) {
+      return FastMap.create().add("error", String.format("Hoá đơn %s không tồn tại.", invoiceCode));
+    }
+    InvoiceDto invoiceDto = invoiceDtos.get(0);
+    processInvoiceHookDto(tranformInvoiceDtoToInvoiceHookDto(invoiceDto));
+    return FastMap.create();
+  }
+
+  private InvoiceHookDto tranformInvoiceDtoToInvoiceHookDto(InvoiceDto invoiceDto) {
+    InvoiceHookDto invoiceHookDto = new InvoiceHookDto();
+    invoiceHookDto.setId(invoiceDto.getId());
+    invoiceHookDto.setCode(invoiceDto.getCode());
+    invoiceHookDto.setPurchaseDate(invoiceDto.getPurchaseDate());
+    invoiceHookDto.setStatus(Integer.valueOf(invoiceDto.getStatus()));
+    invoiceHookDto.setSoldById(invoiceDto.getSellerId());
+    invoiceHookDto.setCustomerId(invoiceDto.getCustomerId());
+    return invoiceHookDto;
   }
 
   private void processInvoiceHookDto(InvoiceHookDto invoiceHookDto) {
