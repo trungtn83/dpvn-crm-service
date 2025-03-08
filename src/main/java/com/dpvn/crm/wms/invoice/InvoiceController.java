@@ -31,7 +31,7 @@ public class InvoiceController {
    */
   @PostMapping("/find-by-options")
   public PagingResponse<InvoiceDto> findInvoicesByOptions(@RequestBody FastMap body) {
-    String filterText = body.getString("codfilterTexte");
+    String filterText = body.getString("filterText");
     Long sellerId = body.getLong("sellerId");
     Long customerId = body.getLong("customerId");
     List<String> statuses = body.getListClass("statuses", String.class);

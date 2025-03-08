@@ -20,12 +20,6 @@ public class InteractionController {
     this.interactionService = interactionService;
   }
 
-  @GetMapping("/interaction")
-  public List<InteractionDto> getInteractionCustomers(
-      @RequestHeader("x-user-id") Long loginUserId, @RequestParam Long customerId) {
-    return interactionService.getAllInteractions(loginUserId, customerId);
-  }
-
   @GetMapping("/find-by-options")
   public FastMap findInteractionsByOptions(
       @RequestHeader("x-user-id") Long loginUserId,

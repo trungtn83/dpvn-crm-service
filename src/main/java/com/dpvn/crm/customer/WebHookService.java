@@ -1,6 +1,5 @@
 package com.dpvn.crm.customer;
 
-import com.ctc.wstx.shaded.msv_core.reader.datatype.xsd.FacetState;
 import com.dpvn.crm.client.KiotvietServiceClient;
 import com.dpvn.crm.client.WmsCrudClient;
 import com.dpvn.crm.customer.dto.InvoiceHookDto;
@@ -38,7 +37,8 @@ public class WebHookService extends AbstractService {
       UserService userService,
       CustomerService customerService,
       WebHookHandlerService webHookHandlerService,
-      KiotvietServiceClient kiotvietServiceClient, WmsCrudClient wmsCrudClient) {
+      KiotvietServiceClient kiotvietServiceClient,
+      WmsCrudClient wmsCrudClient) {
     this.userService = userService;
     this.customerService = customerService;
     this.webHookHandlerService = webHookHandlerService;
@@ -199,7 +199,11 @@ public class WebHookService extends AbstractService {
   public FastMap reprocessInvoice(String invoiceCode) {
     kiotvietServiceClient.syncInvoice(invoiceCode);
 
-    FastMap params = FastMap.create().add("code", invoiceCode).add("page", 0).add("pageSize", Globals.Paging.FETCHING_PAGE_SIZE);
+    FastMap params =
+        FastMap.create()
+            .add("code", invoiceCode)
+            .add("page", 0)
+            .add("pageSize", Globals.Paging.FETCHING_PAGE_SIZE);
     List<InvoiceDto> invoiceDtos = wmsCrudClient.findInvoicesByOptions(params).getRows();
     if (ListUtil.isEmpty(invoiceDtos)) {
       return FastMap.create().add("error", String.format("Hoá đơn %s không tồn tại.", invoiceCode));

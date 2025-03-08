@@ -610,8 +610,4 @@ public class CustomerService extends AbstractService {
         InteractionUtil.generateSystemInteraction(
             saleId, customerId, null, "Đào khách hàng từ " + Customers.Owners.get(owner)));
   }
-
-  public void fixCustomer(Long loginUserId, Long customerId) {
-
-  }
 }

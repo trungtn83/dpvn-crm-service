@@ -15,6 +15,7 @@ import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.util.FastMap;
 import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -74,6 +75,9 @@ public interface CrmCrudClient {
   // ============================================================================================================
   @GetMapping("/customer/{id}")
   CustomerDto findCustomerById(@PathVariable("id") Long id);
+
+  @PostMapping("/customer/find-by-ids")
+  List<CustomerDto> findCustomerByIds(@RequestBody List<Long> customerIds);
 
   @GetMapping("/customer/find-by-idf/{idf}")
   CustomerDto findCustomerByIdf(@PathVariable("idf") Long idf);
@@ -172,6 +176,14 @@ public interface CrmCrudClient {
   CustomerDto findLastCreatedCustomer(
       @RequestParam(value = "sourceId", required = false) Integer sourceId);
 
+  /**
+   * - saleId: Long
+   * - fromDate: string -> yyyy-MM-dd
+   * - toDate: string -> yyyy-MM-dd
+   */
+  @PostMapping("/sale-customer/find-by-sale")
+  List<SaleCustomerDto> findSaleCustomersBySale(@RequestBody FastMap body);
+
   // SALE-CUSTOMER-CATEGORY
   // ============================================================================================================
   @GetMapping("/sale-customer-category/find-by-options")
@@ -186,13 +198,8 @@ public interface CrmCrudClient {
 
   // TASK
   // ============================================================================================================
-  @GetMapping("/task/find-by-options")
-  List<TaskDto> getAllTasks(
-      @RequestParam Long userId,
-      @RequestParam(required = false) Long customerId,
-      @RequestParam(required = false) Long campaignId,
-      @RequestParam(required = false) Long kpiId,
-      @RequestParam(required = false) Long otherId);
+  @PostMapping("/task/find-by-options")
+  FastMap findTasks(@RequestBody FastMap body);
 
   @PostMapping("/task")
   void createNewTask(@RequestBody TaskDto body);
@@ -202,12 +209,8 @@ public interface CrmCrudClient {
 
   // INTERACTION
   // ===========================================================================================================
-  @GetMapping("/interaction/find-by-options")
-  List<InteractionDto> getAllInteractions(
-      @RequestParam(required = false) Long userId,
-      @RequestParam(required = false) Long customerId,
-      @RequestParam(required = false) Long campaignId,
-      @RequestParam(required = false) Integer visibility);
+  @PostMapping("/interaction/find-by-options")
+  List<InteractionDto> findAllInteractions(@RequestBody FastMap body);
 
   @PostMapping("/interaction")
   void createInteraction(@RequestBody InteractionDto body);

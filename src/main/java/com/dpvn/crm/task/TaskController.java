@@ -1,40 +1,41 @@
 package com.dpvn.crm.task;
 
+import com.dpvn.crm.user.UserService;
 import com.dpvn.crmcrudservice.domain.dto.TaskDto;
-import java.util.List;
+import com.dpvn.shared.util.FastMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/task")
 public class TaskController {
   private final TaskService taskService;
+  private final UserService userService;
 
-  public TaskController(TaskService taskService) {
+  public TaskController(TaskService taskService, UserService userService) {
     this.taskService = taskService;
+    this.userService = userService;
   }
 
-  @GetMapping("/find-by-options")
-  public List<TaskDto> getAllTasks(
-      @RequestHeader("x-user-id") Long loginUserId,
-      @RequestParam(required = false) Long customerId,
-      @RequestParam(required = false) Long campaignId,
-      @RequestParam(required = false) Long kpiId,
-      @RequestParam(required = false) Long otherId) {
-    return taskService.getAllTasks(loginUserId, customerId, campaignId, kpiId, otherId);
-  }
-
-  @GetMapping("/task")
-  public List<TaskDto> getAllTasks(
-      @RequestHeader("x-user-id") Long loginUserId, @RequestParam Long customerId) {
-    return taskService.getAllTasks(loginUserId, customerId, null, null, null);
+  /**
+   *  - userId -> sale id
+   *  - customerId
+   *  - filterText : find in (title, name, content fields)
+   *  - tags: NOT YET
+   *  - statuses: List String
+   *  - progresses: List Integer
+   *  - sorts: List String (should be snake_case as physical fields)
+   */
+  @PostMapping("/find-by-options")
+  public FastMap getAllTasks(
+      @RequestHeader("x-user-id") Long loginUserId, @RequestBody FastMap body) {
+    body.add("userId", !userService.isGod(loginUserId) ? loginUserId : null);
+    return taskService.findTasks(body);
   }
 
   @PostMapping

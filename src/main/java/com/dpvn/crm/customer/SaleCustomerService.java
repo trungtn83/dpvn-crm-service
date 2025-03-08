@@ -6,6 +6,8 @@ import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.ListUtil;
 import java.util.List;
+
+import com.dpvn.shared.util.StringUtil;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -40,8 +42,10 @@ public class SaleCustomerService {
         FastMap.create()
             .add("saleId", saleId)
             .add("customerIds", List.of(customerId))
-            .add("relationshipType", relationshipType)
-            .add("reasonRef", reasonRef);
+            .add("relationshipType", relationshipType);
+    if (StringUtil.isNotEmpty(reasonRef)) {
+      options.add("reasonRef", reasonRef);
+    }
     if (reasonId != null) {
       options.add("reasonIds", List.of(reasonId));
     }

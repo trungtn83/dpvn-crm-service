@@ -7,7 +7,6 @@ import com.dpvn.crmcrudservice.domain.dto.InteractionDto;
 import com.dpvn.shared.util.FastMap;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
@@ -24,33 +23,30 @@ public class InteractionService {
     this.userService = userService;
   }
 
-  public List<InteractionDto> getAllInteractions(Long saleId, Long customerId) {
-    List<InteractionDto> interactionDtos =
-        crmCrudClient.getAllInteractions(null, customerId, null, null);
-    return interactionDtos.stream()
-        .filter(
-            i ->
-                Objects.equals(i.getInteractBy(), saleId) || i.getVisibility() == Visibility.PUBLIC)
-        .toList();
-  }
-
   public FastMap findInteractionsByOptions(
       Long userId, Long customerId, Long campaignId, boolean isLite) {
-    List<InteractionDto> myInteractions =
-        crmCrudClient.getAllInteractions(userId, customerId, campaignId, null);
-    List<InteractionDto> otherPublicInteractions =
-        crmCrudClient.getAllInteractions(null, customerId, campaignId, Visibility.PUBLIC);
+    FastMap myParams = FastMap.create().add("customerId", customerId).add("campaignId", campaignId);
+    if (!userService.isGod(userId)) {
+      myParams.add("userId", userId);
+    }
+    List<InteractionDto> myInteractions = crmCrudClient.findAllInteractions(myParams);
+
+    FastMap publicParams =
+        FastMap.create()
+            .add("customerId", customerId)
+            .add("campaignId", campaignId)
+            .add("visibility", Visibility.PUBLIC);
+    List<InteractionDto> otherPublicInteractions = crmCrudClient.findAllInteractions(publicParams);
+
     List<InteractionDto> interactionDtos =
         new ArrayList<>(
             Stream.concat(myInteractions.stream(), otherPublicInteractions.stream())
                 .filter(interaction -> interaction.getId() != null) // Optional: exclude null IDs
                 .collect(
                     Collectors.toMap(
-                        InteractionDto::getId, // Use getId() as the key for uniqueness
-                        interaction -> interaction, // Keep the whole InteractionDto as the value
-                        (existing, replacement) ->
-                            existing // If there’s a duplicate ID, keep the existing object
-                        ))
+                        InteractionDto::getId,
+                        interaction -> interaction,
+                        (existing, replacement) -> existing))
                 .values());
 
     FastMap result = FastMap.create().add("interactions", interactionDtos);

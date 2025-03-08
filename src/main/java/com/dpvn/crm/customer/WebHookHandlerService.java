@@ -6,6 +6,7 @@ import com.dpvn.crmcrudservice.domain.constant.SaleCustomers;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
+import com.dpvn.shared.domain.constant.Globals;
 import com.dpvn.shared.service.AbstractService;
 import com.dpvn.shared.util.DateUtil;
 import com.dpvn.shared.util.FastMap;
@@ -45,7 +46,7 @@ public class WebHookHandlerService extends AbstractService {
       UserDto sale, CustomerDto customer, String code, Instant purchaseDate) {
     LOGGER.info("Processing temp order {} of customer {} by sale {}", code, customer, sale);
     Instant from = purchaseDate != null ? purchaseDate : DateUtil.now();
-    Instant to = from.plus(7, ChronoUnit.DAYS);
+    Instant to = from.plus(Globals.Customer.LIFE_TIME_TEMP_ORDER_IN_DAYS, ChronoUnit.DAYS);
 
     SaleCustomerDto saleCustomerDto =
         saleCustomerService.findSaleCustomerByReason(
@@ -85,7 +86,7 @@ public class WebHookHandlerService extends AbstractService {
   public void handleConfirmedOrder(
       UserDto sale, CustomerDto customer, String code, Instant purchaseDate) {
     Instant from = purchaseDate != null ? purchaseDate : DateUtil.now();
-    Instant to = from.plus(90, ChronoUnit.DAYS);
+    Instant to = from.plus(Globals.Customer.LIFE_TIME_TREASURE_IN_DAYS, ChronoUnit.DAYS);
 
     SaleCustomerDto saleCustomerDto =
         saleCustomerService.findSaleCustomerByReason(
@@ -122,7 +123,7 @@ public class WebHookHandlerService extends AbstractService {
   public void handleInProgressInvoice(
       UserDto sale, CustomerDto customer, String code, Instant purchaseDate) {
     Instant from = purchaseDate != null ? purchaseDate : DateUtil.now();
-    Instant to = from.plus(90, ChronoUnit.DAYS);
+    Instant to = from.plus(Globals.Customer.LIFE_TIME_TREASURE_IN_DAYS, ChronoUnit.DAYS);
 
     SaleCustomerDto saleCustomerDto =
         saleCustomerService.findSaleCustomerByReason(

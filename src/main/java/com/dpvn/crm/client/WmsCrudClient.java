@@ -32,8 +32,8 @@ public interface WmsCrudClient {
    * sellerId: Long -> idf
    * customerId: Long -> idf
    * statuses: List<String>
-   * from: String -> LocalDate
-   * to: String -> LocalDate
+   * from: String -> yyyy-MM-dd
+   * to: String -> yyyy-MM-dd
    * page: int
    * pageSize: int
    */
