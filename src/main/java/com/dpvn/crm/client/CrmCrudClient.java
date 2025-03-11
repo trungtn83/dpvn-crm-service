@@ -15,7 +15,6 @@ import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.util.FastMap;
 import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -201,8 +200,14 @@ public interface CrmCrudClient {
   @PostMapping("/task/find-by-options")
   FastMap findTasks(@RequestBody FastMap body);
 
+  @GetMapping("/task/{id}")
+  TaskDto findTaskById(@PathVariable Long id);
+
   @PostMapping("/task")
   void createNewTask(@RequestBody TaskDto body);
+
+  @PostMapping("/task/{id}")
+  void updateExistedTask(@PathVariable Long id, @RequestBody FastMap body);
 
   @DeleteMapping("/task/{id}")
   void deleteTask(@PathVariable Long id);

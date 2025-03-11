@@ -34,7 +34,9 @@ public class TaskController {
   @PostMapping("/find-by-options")
   public FastMap getAllTasks(
       @RequestHeader("x-user-id") Long loginUserId, @RequestBody FastMap body) {
-    body.add("userId", !userService.isGod(loginUserId) ? loginUserId : null);
+    if (!userService.isGod(loginUserId)) {
+      body.add("userId", loginUserId);
+    }
     return taskService.findTasks(body);
   }
 
@@ -46,6 +48,14 @@ public class TaskController {
       body.setUserId(loginUserId);
     }
     taskService.createNewTask(body);
+  }
+
+  @PostMapping("/{id}")
+  public void updateExistedTask(
+      @RequestHeader("x-user-id") Long loginUserId,
+      @PathVariable("id") Long id,
+      @RequestBody FastMap body) {
+    taskService.updateExistedTask(loginUserId, id, body);
   }
 
   @DeleteMapping("/{id}")

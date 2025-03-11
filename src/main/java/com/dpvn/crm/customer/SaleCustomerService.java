@@ -5,9 +5,8 @@ import com.dpvn.crmcrudservice.domain.constant.RelationshipType;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.ListUtil;
-import java.util.List;
-
 import com.dpvn.shared.util.StringUtil;
+import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service

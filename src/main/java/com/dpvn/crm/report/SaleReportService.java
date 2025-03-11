@@ -13,12 +13,11 @@ import com.dpvn.shared.util.DateUtil;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.LocalDateUtil;
 import com.dpvn.wmscrudservice.domain.dto.InvoiceDto;
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.stereotype.Service;
 
 @Service
 public class SaleReportService extends AbstractService {
