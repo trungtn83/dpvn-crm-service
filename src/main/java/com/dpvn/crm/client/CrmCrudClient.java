@@ -43,18 +43,24 @@ public interface CrmCrudClient {
   @PostMapping("/user/find-by-options")
   List<UserDto> findUsersByOptions(@RequestBody UserDto userDto);
 
+  @PostMapping("/user")
+  UserDto createNewUser(@RequestBody UserDto dto);
+
+  @PostMapping(value = "/user/{id}")
+  UserDto updateExistedUser(@PathVariable("id") Long id, @RequestBody FastMap dto);
+
+  @DeleteMapping("/user/{id}")
+  void deleteUser(@PathVariable Long id);
+
   /**
-   * - filterText - department: get from Constant please - role: get from Constant please - page :
-   * null if get all - pageSize : null if get all
+   * - filterText
+   * - departments
+   * - roles
+   * - page
+   * - pageSize
    */
   @PostMapping("/user/search")
   FastMap searchUsers(@RequestBody FastMap condition);
-
-  @GetMapping("/user")
-  PagingResponse<UserDto> listAllUsers(
-      @RequestParam(required = false, defaultValue = "0") Integer page,
-      @RequestParam(required = false, defaultValue = "100") Integer pageSize,
-      @RequestParam(required = false) List<String> sorts);
 
   // HRM
   // ===========================================================================================================
@@ -211,6 +217,10 @@ public interface CrmCrudClient {
 
   @DeleteMapping("/task/{id}")
   void deleteTask(@PathVariable Long id);
+
+  @GetMapping("/task/report-by-seller")
+  List<TaskDto> findTasksReportBySeller(
+      @RequestParam Long sellerId, @RequestParam String fromDate, @RequestParam String toDate);
 
   // INTERACTION
   // ===========================================================================================================

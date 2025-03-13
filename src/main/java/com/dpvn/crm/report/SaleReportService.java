@@ -3,10 +3,7 @@ package com.dpvn.crm.report;
 import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crm.client.WmsCrudClient;
 import com.dpvn.crm.user.UserService;
-import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
-import com.dpvn.crmcrudservice.domain.dto.InteractionDto;
-import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
-import com.dpvn.crmcrudservice.domain.dto.UserDto;
+import com.dpvn.crmcrudservice.domain.dto.*;
 import com.dpvn.shared.domain.BaseDto;
 import com.dpvn.shared.service.AbstractService;
 import com.dpvn.shared.util.DateUtil;
@@ -41,7 +38,8 @@ public class SaleReportService extends AbstractService {
     return FastMap.create()
         .add("sale", sale)
         .add("revenue", reportRevenue(saleId, fromDateStr, toDateStr))
-        .add("customer", reportCustomer(saleId, fromDateStr, toDateStr));
+        .add("customer", reportCustomer(saleId, fromDateStr, toDateStr))
+        .add("task", reportTask(saleId, fromDateStr, toDateStr));
   }
 
   private FastMap reportRevenue(Long saleId, String fromDateStr, String toDateStr) {
@@ -87,7 +85,13 @@ public class SaleReportService extends AbstractService {
 
     return FastMap.create()
         .add("selfDig", selfDig)
-        .add("totalDig", customerMapById.values().size())
+        .add("totalDig", customerMapById.size())
         .add("takeCare", interactionDtos.size());
+  }
+
+  private FastMap reportTask(Long saleId, String fromDate, String toDate) {
+    List<TaskDto> findTasksReportBySeller =
+        crmCrudClient.findTasksReportBySeller(saleId, fromDate, toDate);
+    return FastMap.create().add("total", findTasksReportBySeller.size());
   }
 }

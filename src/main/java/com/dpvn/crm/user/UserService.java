@@ -89,6 +89,18 @@ public class UserService {
   }
 
   public PagingResponse<UserDto> listAllUsers() {
-    return crmCrudClient.listAllUsers(-1, -1, List.of());
+    return crmCrudClient.getUsers(-1, -1);
+  }
+
+  public UserDto createNewUser(UserDto userDto) {
+    return crmCrudClient.createNewUser(userDto);
+  }
+
+  public UserDto updateUser(Long id, FastMap userDto) {
+    return crmCrudClient.updateExistedUser(id, userDto);
+  }
+
+  public void deleteUser(Long id) {
+    crmCrudClient.deleteUser(id);
   }
 }
