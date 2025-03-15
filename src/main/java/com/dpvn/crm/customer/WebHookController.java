@@ -5,7 +5,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -17,18 +16,6 @@ public class WebHookController {
 
   public WebHookController(WebHookService webHookService) {
     this.webHookService = webHookService;
-  }
-
-  @PostMapping("/order")
-  public void handleKiotVietWebhookOrderUpdate(@RequestBody String payload) {
-    LOG.info("Payload order: {}", payload);
-    webHookService.processOrder(payload);
-  }
-
-  @PostMapping("/invoice")
-  public void handleKiotVietWebhookInvoiceUpdate(@RequestBody String payload) {
-    LOG.info("Payload invoice: {}", payload);
-    webHookService.processInvoice(payload);
   }
 
   @PostMapping("/invoice/{invoiceCode}/re-process")

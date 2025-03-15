@@ -42,27 +42,9 @@ public class UserService {
       return userDtos;
     }
 
-    if (isAdmin(user)) {
-      return userDtos.stream().filter(ut -> !UserUtil.isGod(ut)).toList();
-    }
     return userDtos.stream()
         .filter(ut -> ObjectUtil.equals(ut.getDepartmentId(), user.getDepartmentId()))
         .toList();
-  }
-
-  public boolean isGod(Long userId) {
-    UserDto userDto = findById(userId);
-    return UserUtil.isGod(userDto);
-  }
-
-  public boolean isDemiGod(Long userId) {
-    UserDto userDto = findById(userId);
-    return UserUtil.isDemiGod(userDto);
-  }
-
-  private boolean isAdmin(UserDto userDto) {
-    return "ADMIN".equals(userDto.getRole().getRoleName())
-        && "BOM".equals(userDto.getDepartment().getDepartmentName());
   }
 
   public List<UserDto> findUsersByIds(List<Long> userIds) {
@@ -102,5 +84,14 @@ public class UserService {
 
   public void deleteUser(Long id) {
     crmCrudClient.deleteUser(id);
+  }
+
+  public boolean isGod(Long userId) {
+    UserDto user = findById(userId);
+    return UserUtil.isGod(user);
+  }
+
+  public boolean isGod(UserDto user) {
+    return UserUtil.isGod(user);
   }
 }

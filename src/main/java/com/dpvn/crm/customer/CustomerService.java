@@ -6,34 +6,22 @@ import com.dpvn.crm.client.WmsCrudClient;
 import com.dpvn.crm.interaction.InteractionService;
 import com.dpvn.crm.interaction.InteractionUtil;
 import com.dpvn.crm.user.UserService;
+import com.dpvn.crm.user.UserUtil;
 import com.dpvn.crmcrudservice.domain.constant.Customers;
 import com.dpvn.crmcrudservice.domain.constant.RelationshipType;
 import com.dpvn.crmcrudservice.domain.constant.SaleCustomers;
-import com.dpvn.crmcrudservice.domain.dto.CustomerAddressDto;
-import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
-import com.dpvn.crmcrudservice.domain.dto.CustomerReferenceDto;
-import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
-import com.dpvn.crmcrudservice.domain.dto.SaleCustomerStateDto;
-import com.dpvn.crmcrudservice.domain.dto.UserDto;
+import com.dpvn.crmcrudservice.domain.dto.*;
 import com.dpvn.shared.domain.constant.Globals;
 import com.dpvn.shared.exception.BadRequestException;
 import com.dpvn.shared.service.AbstractService;
-import com.dpvn.shared.util.DateUtil;
-import com.dpvn.shared.util.FastMap;
-import com.dpvn.shared.util.ListUtil;
-import com.dpvn.shared.util.ObjectUtil;
-import com.dpvn.shared.util.StringUtil;
+import com.dpvn.shared.util.*;
 import com.dpvn.wmscrudservice.domain.constant.Invoices;
 import com.dpvn.wmscrudservice.domain.constant.Orders;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class CustomerService extends AbstractService {
@@ -162,9 +150,11 @@ public class CustomerService extends AbstractService {
   public void createNewCustomer(Long userId, FastMap body) {
     CustomerDto customerDto = extractCustomerFromBody(body);
     SaleCustomerDto saleCustomerDto = extractSaleCustomerFromBody(body);
+    boolean isActive = customerDto.getActive();
 
     // in case of create new customer but id existed
     // that mean sale 2 find also customer that created (tự đào) by sale 1
+    //  or đang tồn tại trong kho vàng hoặc bãi cát mà tự tìm ra số đt ở đâu đó
     if (customerDto.getId() != null) {
       CustomerDto existedCustomer = crmCrudClient.findCustomerById(customerDto.getId());
       if (existedCustomer == null) {
@@ -177,22 +167,29 @@ public class CustomerService extends AbstractService {
       saleCustomerDto.setSaleId(userId);
       saleCustomerDto.setActive(true);
       saleCustomerDto.setDeleted(false);
-      saleCustomerDto.setReasonId(SaleCustomers.Reason.BY_MY_HAND);
+      saleCustomerDto.setReasonId(
+          isActive
+              ? SaleCustomers.Reason.BY_MY_HAND_FROM_GOLDMINE
+              : SaleCustomers.Reason.BY_MY_HAND_FROM_SANDBANK);
       saleCustomerDto.setReasonRef(userId.toString());
-      saleCustomerDto.setReasonNote("Đào được khách này nhưng người khác đã đào trước rồi");
+      saleCustomerDto.setReasonNote("Đào được khách này nhưng đã có trong hệ thống rồi");
       saleCustomerService.createNewSaleCustomer(saleCustomerDto);
+
+      String content = "Đào được khách hàng từ " + (isActive ? "Kho vàng" : "Bãi cát") + " màn hình tạo mới";
+      interactionService.createInteraction(
+          InteractionUtil.generateSystemInteraction(userId, customerDto.getId(), null, content));
     } else {
-      boolean isActive = customerDto.getActive();
       // TODO: call to function validateMobilePhoneNewCustomer first to check if mobile phone is
       // valid
+      customerDto.setCreatedBy(userId);
       customerDto.setActive(true);
       customerDto.setStatus(Customers.Status.VERIFIED);
       CustomerDto result =
           customerDto.getId() == null
               ? crmCrudClient.createNewCustomer(customerDto)
               : crmCrudClient.updateExistedCustomer(
-                  customerDto.getId(),
-                  FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
+              customerDto.getId(),
+              FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
       // auto generate code when user leave it empty
       if (StringUtil.isEmpty(result.getCustomerCode())) {
         result =
@@ -202,6 +199,9 @@ public class CustomerService extends AbstractService {
       }
       assignCustomerToSaleInUpsertScreen(
           userId, customerDto.getId(), result, saleCustomerDto, isActive);
+      String content = "Tạo mới khách hàng chưa có trong hệ thống và phân công cho chính mình";
+      interactionService.createInteraction(
+          InteractionUtil.generateSystemInteraction(userId, customerDto.getId(), null, content));
     }
   }
 
@@ -266,8 +266,8 @@ public class CustomerService extends AbstractService {
             customerId == null
                 ? SaleCustomers.Reason.BY_MY_HAND
                 : (isActive
-                    ? SaleCustomers.Reason.BY_MY_HAND_FROM_GOLDMINE
-                    : SaleCustomers.Reason.BY_MY_HAND_FROM_SANDBANK);
+                ? SaleCustomers.Reason.BY_MY_HAND_FROM_GOLDMINE
+                : SaleCustomers.Reason.BY_MY_HAND_FROM_SANDBANK);
         saleCustomerDto.setReasonId(reasonId);
         saleCustomerDto.setReasonRef(userId.toString());
         saleCustomerDto.setReasonNote("Tạo khách hàng từ màn hình tạo mới");
@@ -312,18 +312,6 @@ public class CustomerService extends AbstractService {
 
     String content = "Không đào được khách hàng này tiếp, đưa lại về ";
 
-    //    if (StringUtil.isEmpty(dbCustomerDto.getMobilePhone())) {
-    //      crmCrudClient.deleteCustomer(customerId);
-    //      content = null;
-    //    } else if (Customers.Status.VERIFYING.equals(dbCustomerDto.getStatus())) {
-    //      // xoá khi dược assign từ màn hình bãi cát, chưa có verìy nên status= VẺIFYING
-    //      crmCrudClient.updateExistedCustomer(
-    //          customerId, FastMap.create().add("status", null).add("active", false));
-    //      content += "Bãi cát";
-    //    } else {
-    //      content += "Kho vàng";
-    //    }
-
     // delete forever when GOD do it without owner, or no mobile phone (trash data)
     if ((userService.isGod(saleId) && StringUtil.isEmpty(owner))
         || StringUtil.isEmpty(dbCustomerDto.getMobilePhone())) {
@@ -361,11 +349,11 @@ public class CustomerService extends AbstractService {
     return crmCrudClient.findCustomerById(id);
   }
 
-  public FastMap findCustomerOfSale(Long userId, Long customerId) {
+  public FastMap findCustomerOfSale(Long saleId, Long customerId) {
     FastMap condition = FastMap.create().add("customerIds", List.of(customerId));
     List<SaleCustomerDto> saleCustomerDtos = crmCrudClient.findSaleCustomersByOptions(condition);
     List<SaleCustomerDto> mySaleCustomerDtos =
-        saleCustomerDtos.stream().filter(sc -> sc.getSaleId().equals(userId)).toList();
+        saleCustomerDtos.stream().filter(sc -> sc.getSaleId().equals(saleId)).toList();
 
     SaleCustomerDto mySaleCustomerDto =
         ListUtil.isEmpty(mySaleCustomerDtos)
@@ -374,7 +362,7 @@ public class CustomerService extends AbstractService {
     List<SaleCustomerStateDto> lastStates =
         crmCrudClient.findLatestBySaleIdAndCustomerIds(
             FastMap.create()
-                .add("saleId", userId)
+                .add("saleId", saleId)
                 .add("customerIds", List.of(mySaleCustomerDto.getCustomerId())));
     SaleCustomerStateDto myLastStateDto =
         ListUtil.isEmpty(lastStates) ? new SaleCustomerStateDto() : lastStates.get(0);
@@ -382,6 +370,11 @@ public class CustomerService extends AbstractService {
     CustomerDto customerDto = mySaleCustomerDto.getCustomerDto();
     mySaleCustomerDto.setCustomerDto(null);
 
+    UserDto userDto = userService.findById(saleId);
+    Long userId =
+        (UserUtil.isDemiGod(userDto) || UserUtil.isAccount(userDto) || UserUtil.isAdmin(userDto))
+            ? null
+            : saleId;
     return FastMap.create()
         .add("customer", customerDto)
         .add("saleCustomer", mySaleCustomerDto)
@@ -389,10 +382,7 @@ public class CustomerService extends AbstractService {
         .add(
             "isMyCustomer",
             SaleCustomers.Reason.MY_OWN_HANDS.contains(mySaleCustomerDto.getReasonId()))
-        .add(
-            "owner",
-            CustomerUtil.getCustomerOwner(
-                userService.isDemiGod(userId) ? null : userId, customerDto, saleCustomerDtos));
+        .add("owner", CustomerUtil.getCustomerOwner(userId, customerDto, saleCustomerDtos));
   }
 
   /**

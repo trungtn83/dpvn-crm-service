@@ -62,7 +62,7 @@ public class CustomerUtil {
     List<Long> ownerId = owner.getListClass("ownerId", Long.class);
     String ownerName = owner.getString("ownerName");
     boolean isViewable =
-        saleId == null // is god
+        saleId == null // is god by role or is account by department
             || (List.of(Customers.Owner.SANDBANK, Customers.Owner.GOLDMINE)
                 .contains(ownerName)) // is in bãi cát hoặc mỏ vàng
             || ListUtil.isEmpty(ownerId) // not belong to anyone

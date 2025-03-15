@@ -1,26 +1,12 @@
 package com.dpvn.crm.client;
 
-import com.dpvn.crmcrudservice.domain.dto.CampaignDto;
-import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
-import com.dpvn.crmcrudservice.domain.dto.CustomerTypeDto;
-import com.dpvn.crmcrudservice.domain.dto.InteractionDto;
-import com.dpvn.crmcrudservice.domain.dto.LeaveRequestDto;
-import com.dpvn.crmcrudservice.domain.dto.SaleCustomerCategoryDto;
-import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
-import com.dpvn.crmcrudservice.domain.dto.SaleCustomerStateDto;
-import com.dpvn.crmcrudservice.domain.dto.TaskDto;
-import com.dpvn.crmcrudservice.domain.dto.UserDto;
+import com.dpvn.crmcrudservice.domain.dto.*;
 import com.dpvn.shared.domain.dto.AddressDto;
 import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.util.FastMap;
 import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 @FeignClient(name = "crm-crud-service", contextId = "crm-crud-service-client")
 public interface CrmCrudClient {
@@ -53,12 +39,13 @@ public interface CrmCrudClient {
   void deleteUser(@PathVariable Long id);
 
   /**
-   * - filterText
-   * - departments
-   * - roles
-   * - page
-   * - pageSize
-   */
+     * - filterText
+     * - status: Boolean
+     * - departments
+     * - roles
+     * - page
+     * - pageSize
+     */
   @PostMapping("/user/search")
   FastMap searchUsers(@RequestBody FastMap condition);
 
@@ -104,19 +91,27 @@ public interface CrmCrudClient {
       @RequestParam(value = "page", required = false, defaultValue = "0") Integer page,
       @RequestParam(value = "pageSize", required = false, defaultValue = "100") Integer pageSize);
 
-  /** saleId customerCategoryId filterText reasonIds sourceIds page pageSize */
+  /**
+     * saleId customerCategoryId filterText reasonIds sourceIds page pageSize
+     */
   @PostMapping("/customer/my")
   FastMap findMyCustomers(@RequestBody FastMap body);
 
-  /** saleId filterText tags page pageSize */
+  /**
+     * saleId filterText tags page pageSize
+     */
   @PostMapping("/customer/in-pool")
   FastMap findInPoolCustomers(@RequestBody FastMap body);
 
-  /** filterText categoryIds locationIds page pageSize */
+  /**
+     * filterText categoryIds locationIds page pageSize
+     */
   @PostMapping("/customer/in-ocean")
   FastMap findInOceanCustomers(@RequestBody FastMap body);
 
-  /** saleId filterText tags page pageSize */
+  /**
+     * saleId filterText tags page pageSize
+     */
   @PostMapping("/customer/task-based")
   FastMap findTaskBasedCustomers(@RequestBody FastMap body);
 
@@ -182,10 +177,10 @@ public interface CrmCrudClient {
       @RequestParam(value = "sourceId", required = false) Integer sourceId);
 
   /**
-   * - saleId: Long
-   * - fromDate: string -> yyyy-MM-dd
-   * - toDate: string -> yyyy-MM-dd
-   */
+     * - saleId: Long
+     * - fromDate: string -> yyyy-MM-dd
+     * - toDate: string -> yyyy-MM-dd
+     */
   @PostMapping("/sale-customer/find-by-sale")
   List<SaleCustomerDto> findSaleCustomersBySale(@RequestBody FastMap body);
 

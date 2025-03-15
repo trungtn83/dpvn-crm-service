@@ -21,4 +21,18 @@ public class UserUtil {
             && !userDto.getDeleted().equals(Boolean.TRUE)
             && Users.Role.DEMIGOD.equals(userDto.getRole().getRoleName()));
   }
+
+  public static boolean isAccount(UserDto userDto) {
+    return isGod(userDto)
+        || (userDto.getActive().equals(Boolean.TRUE)
+            && !userDto.getDeleted().equals(Boolean.TRUE)
+            && Users.Department.ACCOUNT.equals(userDto.getDepartment().getDepartmentName()));
+  }
+
+  public static boolean isAdmin(UserDto userDto) {
+    return isGod(userDto)
+        || (userDto.getActive().equals(Boolean.TRUE)
+            && !userDto.getDeleted().equals(Boolean.TRUE)
+            && Users.Department.ADMIN.equals(userDto.getDepartment().getDepartmentName()));
+  }
 }

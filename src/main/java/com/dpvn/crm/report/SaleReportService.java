@@ -1,13 +1,18 @@
 package com.dpvn.crm.report;
 
 import com.dpvn.crm.client.CrmCrudClient;
+import com.dpvn.crm.client.ReportCrudClient;
 import com.dpvn.crm.client.WmsCrudClient;
 import com.dpvn.crm.user.UserService;
+import com.dpvn.crm.voip24h.domain.ViCallLogDto;
+import com.dpvn.crm.voip24h.domain.ViCallLogs;
+import com.dpvn.crmcrudservice.domain.constant.Users;
 import com.dpvn.crmcrudservice.domain.dto.*;
 import com.dpvn.shared.domain.BaseDto;
 import com.dpvn.shared.service.AbstractService;
 import com.dpvn.shared.util.DateUtil;
 import com.dpvn.shared.util.FastMap;
+import com.dpvn.shared.util.ListUtil;
 import com.dpvn.shared.util.LocalDateUtil;
 import com.dpvn.wmscrudservice.domain.dto.InvoiceDto;
 import java.time.Instant;
@@ -21,25 +26,31 @@ public class SaleReportService extends AbstractService {
   private final WmsCrudClient wmsCrudClient;
   private final CrmCrudClient crmCrudClient;
   private final UserService userService;
+  private final ReportCrudClient reportCrudClient;
 
   public SaleReportService(
-      WmsCrudClient wmsCrudClient, CrmCrudClient crmCrudClient, UserService userService) {
+      WmsCrudClient wmsCrudClient,
+      CrmCrudClient crmCrudClient,
+      UserService userService,
+      ReportCrudClient reportCrudClient) {
     this.wmsCrudClient = wmsCrudClient;
     this.crmCrudClient = crmCrudClient;
     this.userService = userService;
+    this.reportCrudClient = reportCrudClient;
   }
 
   /**
-   *  fromDate: String in format of LocalDate 2025-01-23
-   *  toDate: String in format of LocalDate 2025-01-25
+   * fromDate: String in format of LocalDate 2025-01-23
+   * toDate: String in format of LocalDate 2025-01-25
    */
   public FastMap report(Long saleId, String fromDateStr, String toDateStr) {
     UserDto sale = userService.findById(saleId);
     return FastMap.create()
         .add("sale", sale)
-        .add("revenue", reportRevenue(saleId, fromDateStr, toDateStr))
+        .add("revenue", reportRevenue(sale.getIdf(), fromDateStr, toDateStr))
         .add("customer", reportCustomer(saleId, fromDateStr, toDateStr))
-        .add("task", reportTask(saleId, fromDateStr, toDateStr));
+        .add("task", reportTask(saleId, fromDateStr, toDateStr))
+        .add("voip24h", reportVoip24h(saleId, fromDateStr, toDateStr));
   }
 
   private FastMap reportRevenue(Long saleId, String fromDateStr, String toDateStr) {
@@ -59,7 +70,10 @@ public class SaleReportService extends AbstractService {
   private FastMap reportCustomer(Long saleId, String fromDateStr, String toDateStr) {
     List<SaleCustomerDto> saleCustomerDtos =
         crmCrudClient.findSaleCustomersBySale(
-            FastMap.create().add("saleId", saleId).add("from", fromDateStr).add("to", toDateStr));
+            FastMap.create()
+                .add("saleId", saleId)
+                .add("fromDate", fromDateStr)
+                .add("toDate", toDateStr));
     List<CustomerDto> customerDtos =
         saleCustomerDtos.stream().map(SaleCustomerDto::getCustomerDto).toList();
     Map<Long, CustomerDto> customerMapById =
@@ -93,5 +107,34 @@ public class SaleReportService extends AbstractService {
     List<TaskDto> findTasksReportBySeller =
         crmCrudClient.findTasksReportBySeller(saleId, fromDate, toDate);
     return FastMap.create().add("total", findTasksReportBySeller.size());
+  }
+
+  private FastMap reportVoip24h(Long saleId, String fromDateStr, String toDateStr) {
+    UserDto sale = userService.findById(saleId);
+    if (ListUtil.isEmpty(sale.getProperties())) {
+      return FastMap.create();
+    }
+    UserPropertyDto voip24hPropertyDto =
+        sale.getProperties().stream()
+            .filter(p -> Users.Property.VOIP24H.equals(p.getCode()))
+            .findFirst()
+            .orElse(null);
+    if (voip24hPropertyDto == null) {
+      return FastMap.create();
+    }
+    List<ViCallLogDto> callLogDtos =
+        reportCrudClient.findCallLogsByCaller(
+            voip24hPropertyDto.getValue(), fromDateStr, toDateStr);
+    Long callIn =
+        callLogDtos.stream().filter(cl -> ViCallLogs.Type.INBOUND.equals(cl.getType())).count();
+    Long callOut =
+        callLogDtos.stream().filter(cl -> ViCallLogs.Type.OUTBOUND.equals(cl.getType())).count();
+    Long ringing = callLogDtos.stream().mapToLong(cl -> cl.getDuration() - cl.getBillSec()).sum();
+    Long calling = callLogDtos.stream().mapToLong(ViCallLogDto::getBillSec).sum();
+    return FastMap.create()
+        .add("in", callIn)
+        .add("out", callOut)
+        .add("ringing", ringing)
+        .add("calling", calling);
   }
 }
