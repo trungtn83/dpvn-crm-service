@@ -2,6 +2,7 @@ package com.dpvn.crm.task;
 
 import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crm.user.UserService;
+import com.dpvn.crmcrudservice.domain.constant.Tasks;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.TaskDto;
 import com.dpvn.shared.exception.BadRequestException;
@@ -73,5 +74,16 @@ public class TaskService {
                 "customer",
                 customerDtoMap.getOrDefault(row.getLong("customerId"), new CustomerDto())));
     return result.add("rows", rows);
+  }
+
+  public List<TaskDto> findTasksReportBySeller(Long saleId, String fromDate, String toDate) {
+    FastMap body =
+        FastMap.create()
+            .add("userId", saleId)
+            .add("progress", List.of(Tasks.Progress.DONE))
+            .add("fromDate", fromDate)
+            .add("toDate", toDate);
+    FastMap result = crmCrudClient.findTasks(body);
+    return result.getListClass("rows", TaskDto.class);
   }
 }

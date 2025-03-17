@@ -15,13 +15,6 @@ public class UserController {
     this.userService = userService;
   }
 
-  @GetMapping("/find-by-user/{userId}")
-  public List<UserDto> getByUser(@PathVariable(name = "userId") Long userId) {
-    List<UserDto> userDtos = userService.findUsersByLeaderId(userId);
-    userDtos.forEach(u -> u.setPassword(null));
-    return userDtos;
-  }
-
   @PostMapping("/find-by-options")
   public List<UserDto> findUsersByOptions(@RequestBody UserDto userDto) {
     List<UserDto> userDtos = userService.findUsersByOptions(userDto);
@@ -30,13 +23,13 @@ public class UserController {
   }
 
   /**
-     * - filterText
-     * - status: Boolean
-     * - departments: List<Long>
-     * - roles: List<Long>
-     * - page
-     * - pageSize
-     */
+   * - filterText
+   * - status: Boolean
+   * - departments: List<Long>
+   * - roles: List<Long>
+   * - page
+   * - pageSize
+   */
   @PostMapping("/search")
   public FastMap searchUsers(@RequestBody FastMap condition) {
     FastMap result = userService.searchUsers(condition);
@@ -61,16 +54,12 @@ public class UserController {
   }
 
   @PostMapping
-  public UserDto createNewUser(@RequestBody UserDto userDto) {
-    UserDto user = userService.createNewUser(userDto);
-    user.setPassword(null);
-    return user;
+  public void createNewUser(@RequestBody UserDto userDto) {
+    userService.createNewUser(userDto);
   }
 
   @PostMapping("/{id}")
-  public UserDto updateExistedUser(@PathVariable Long id, @RequestBody FastMap userDto) {
-    UserDto user = userService.updateUser(id, userDto);
-    user.setPassword(null);
-    return user;
+  public void updateExistedUser(@PathVariable Long id, @RequestBody FastMap userDto) {
+    userService.updateUser(id, userDto);
   }
 }

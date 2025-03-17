@@ -17,11 +17,10 @@ import com.dpvn.shared.service.AbstractService;
 import com.dpvn.shared.util.*;
 import com.dpvn.wmscrudservice.domain.constant.Invoices;
 import com.dpvn.wmscrudservice.domain.constant.Orders;
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.stereotype.Service;
 
 @Service
 public class CustomerService extends AbstractService {
@@ -175,7 +174,8 @@ public class CustomerService extends AbstractService {
       saleCustomerDto.setReasonNote("Đào được khách này nhưng đã có trong hệ thống rồi");
       saleCustomerService.createNewSaleCustomer(saleCustomerDto);
 
-      String content = "Đào được khách hàng từ " + (isActive ? "Kho vàng" : "Bãi cát") + " màn hình tạo mới";
+      String content =
+          "Đào được khách hàng từ " + (isActive ? "Kho vàng" : "Bãi cát") + " màn hình tạo mới";
       interactionService.createInteraction(
           InteractionUtil.generateSystemInteraction(userId, customerDto.getId(), null, content));
     } else {
@@ -188,8 +188,8 @@ public class CustomerService extends AbstractService {
           customerDto.getId() == null
               ? crmCrudClient.createNewCustomer(customerDto)
               : crmCrudClient.updateExistedCustomer(
-              customerDto.getId(),
-              FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
+                  customerDto.getId(),
+                  FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
       // auto generate code when user leave it empty
       if (StringUtil.isEmpty(result.getCustomerCode())) {
         result =
@@ -266,8 +266,8 @@ public class CustomerService extends AbstractService {
             customerId == null
                 ? SaleCustomers.Reason.BY_MY_HAND
                 : (isActive
-                ? SaleCustomers.Reason.BY_MY_HAND_FROM_GOLDMINE
-                : SaleCustomers.Reason.BY_MY_HAND_FROM_SANDBANK);
+                    ? SaleCustomers.Reason.BY_MY_HAND_FROM_GOLDMINE
+                    : SaleCustomers.Reason.BY_MY_HAND_FROM_SANDBANK);
         saleCustomerDto.setReasonId(reasonId);
         saleCustomerDto.setReasonRef(userId.toString());
         saleCustomerDto.setReasonNote("Tạo khách hàng từ màn hình tạo mới");

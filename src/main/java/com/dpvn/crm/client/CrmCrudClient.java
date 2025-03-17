@@ -39,13 +39,21 @@ public interface CrmCrudClient {
   void deleteUser(@PathVariable Long id);
 
   /**
-     * - filterText
-     * - status: Boolean
-     * - departments
-     * - roles
-     * - page
-     * - pageSize
-     */
+   * leaderId: Long
+   * memberId: Long
+   * action: ADD / REMOVE => use const please
+   */
+  @PostMapping("/user/member")
+  void updateMember(@RequestBody FastMap body);
+
+  /**
+   * - filterText
+   * - status: Boolean
+   * - departments
+   * - roles
+   * - page
+   * - pageSize
+   */
   @PostMapping("/user/search")
   FastMap searchUsers(@RequestBody FastMap condition);
 
@@ -92,26 +100,26 @@ public interface CrmCrudClient {
       @RequestParam(value = "pageSize", required = false, defaultValue = "100") Integer pageSize);
 
   /**
-     * saleId customerCategoryId filterText reasonIds sourceIds page pageSize
-     */
+   * saleId customerCategoryId filterText reasonIds sourceIds page pageSize
+   */
   @PostMapping("/customer/my")
   FastMap findMyCustomers(@RequestBody FastMap body);
 
   /**
-     * saleId filterText tags page pageSize
-     */
+   * saleId filterText tags page pageSize
+   */
   @PostMapping("/customer/in-pool")
   FastMap findInPoolCustomers(@RequestBody FastMap body);
 
   /**
-     * filterText categoryIds locationIds page pageSize
-     */
+   * filterText categoryIds locationIds page pageSize
+   */
   @PostMapping("/customer/in-ocean")
   FastMap findInOceanCustomers(@RequestBody FastMap body);
 
   /**
-     * saleId filterText tags page pageSize
-     */
+   * saleId filterText tags page pageSize
+   */
   @PostMapping("/customer/task-based")
   FastMap findTaskBasedCustomers(@RequestBody FastMap body);
 
@@ -177,10 +185,10 @@ public interface CrmCrudClient {
       @RequestParam(value = "sourceId", required = false) Integer sourceId);
 
   /**
-     * - saleId: Long
-     * - fromDate: string -> yyyy-MM-dd
-     * - toDate: string -> yyyy-MM-dd
-     */
+   * - saleId: Long
+   * - fromDate: string -> yyyy-MM-dd
+   * - toDate: string -> yyyy-MM-dd
+   */
   @PostMapping("/sale-customer/find-by-sale")
   List<SaleCustomerDto> findSaleCustomersBySale(@RequestBody FastMap body);
 

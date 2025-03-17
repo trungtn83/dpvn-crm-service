@@ -3,12 +3,14 @@ package com.dpvn.crm.report;
 import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crm.client.ReportCrudClient;
 import com.dpvn.crm.client.WmsCrudClient;
+import com.dpvn.crm.task.TaskService;
 import com.dpvn.crm.user.UserService;
 import com.dpvn.crm.voip24h.domain.ViCallLogDto;
 import com.dpvn.crm.voip24h.domain.ViCallLogs;
 import com.dpvn.crmcrudservice.domain.constant.Users;
 import com.dpvn.crmcrudservice.domain.dto.*;
 import com.dpvn.shared.domain.BaseDto;
+import com.dpvn.shared.exception.BadRequestException;
 import com.dpvn.shared.service.AbstractService;
 import com.dpvn.shared.util.DateUtil;
 import com.dpvn.shared.util.FastMap;
@@ -27,30 +29,65 @@ public class SaleReportService extends AbstractService {
   private final CrmCrudClient crmCrudClient;
   private final UserService userService;
   private final ReportCrudClient reportCrudClient;
+  private final TaskService taskService;
 
   public SaleReportService(
       WmsCrudClient wmsCrudClient,
       CrmCrudClient crmCrudClient,
       UserService userService,
-      ReportCrudClient reportCrudClient) {
+      ReportCrudClient reportCrudClient,
+      TaskService taskService) {
     this.wmsCrudClient = wmsCrudClient;
     this.crmCrudClient = crmCrudClient;
     this.userService = userService;
     this.reportCrudClient = reportCrudClient;
+    this.taskService = taskService;
+  }
+
+  public List<FastMap> reportSales(Long loginUserId, String fromDate, String toDate) {
+    UserDto loginUserDto = userService.findById(loginUserId);
+    List<UserDto> userDtos = loginUserDto.getMembers();
+    if (!userService.isGod(loginUserDto)) {
+      userDtos.add(0, loginUserDto);
+    } else {
+      userDtos.clear();
+      List<UserDto> response = userService.listAllUsers().getRows();
+      userDtos.addAll(
+          response.stream()
+              .filter(
+                  u ->
+                      u.getActive()
+                          && (u.getDepartment() != null
+                              && u.getDepartment()
+                                  .getDepartmentName()
+                                  .equals(Users.Department.SALE)))
+              .toList());
+    }
+    return userDtos.stream()
+        .map(userDto -> reportSaleDetail(loginUserId, userDto.getId(), fromDate, toDate))
+        .toList();
   }
 
   /**
    * fromDate: String in format of LocalDate 2025-01-23
    * toDate: String in format of LocalDate 2025-01-25
    */
-  public FastMap report(Long saleId, String fromDateStr, String toDateStr) {
-    UserDto sale = userService.findById(saleId);
-    return FastMap.create()
-        .add("sale", sale)
-        .add("revenue", reportRevenue(sale.getIdf(), fromDateStr, toDateStr))
-        .add("customer", reportCustomer(saleId, fromDateStr, toDateStr))
-        .add("task", reportTask(saleId, fromDateStr, toDateStr))
-        .add("voip24h", reportVoip24h(saleId, fromDateStr, toDateStr));
+  public FastMap reportSaleDetail(
+      Long loginUserId, Long saleId, String fromDateStr, String toDateStr) {
+    UserDto loginUserDto = userService.findById(loginUserId);
+    if (userService.isGod(loginUserDto)
+        || saleId.equals(loginUserId)
+        || loginUserDto.getMembers().stream().anyMatch(u -> u.getId().equals(saleId))) {
+      UserDto sale = userService.findById(saleId);
+      sale.setPassword(null);
+      return FastMap.create()
+          .add("sale", sale)
+          .add("revenue", reportRevenue(sale.getIdf(), fromDateStr, toDateStr))
+          .add("customer", reportCustomer(saleId, fromDateStr, toDateStr))
+          .add("task", reportTask(saleId, fromDateStr, toDateStr))
+          .add("voip24h", reportVoip24h(saleId, fromDateStr, toDateStr));
+    }
+    throw new BadRequestException("Can not view this sale");
   }
 
   private FastMap reportRevenue(Long saleId, String fromDateStr, String toDateStr) {
@@ -85,7 +122,7 @@ public class SaleReportService extends AbstractService {
         customerMapById.values().stream()
             .filter(
                 c ->
-                    c.getCreatedBy().equals(saleId)
+                    saleId.equals(c.getCreatedBy())
                         && c.getCreatedDate().isAfter(fromDate)
                         && c.getCreatedDate().isBefore(toDate))
             .count();
@@ -105,7 +142,7 @@ public class SaleReportService extends AbstractService {
 
   private FastMap reportTask(Long saleId, String fromDate, String toDate) {
     List<TaskDto> findTasksReportBySeller =
-        crmCrudClient.findTasksReportBySeller(saleId, fromDate, toDate);
+        taskService.findTasksReportBySeller(saleId, fromDate, toDate);
     return FastMap.create().add("total", findTasksReportBySeller.size());
   }
 

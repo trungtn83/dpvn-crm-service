@@ -2,11 +2,10 @@ package com.dpvn.crm.user;
 
 import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crm.client.ReportCrudClient;
+import com.dpvn.crmcrudservice.domain.constant.Users;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
 import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.util.FastMap;
-import com.dpvn.shared.util.ObjectUtil;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -24,27 +23,6 @@ public class UserService {
 
   public UserDto findById(Long userId) {
     return crmCrudClient.getUserById(userId);
-  }
-
-  public List<UserDto> findUsersByLeaderId(Long userId) {
-    List<UserDto> userDtos =
-        crmCrudClient.getUsers(-1, -1).getRows().stream().filter(UserDto::getActive).toList();
-    UserDto user =
-        userDtos.stream()
-            .filter(userDto -> userDto.getId().equals(userId))
-            .findFirst()
-            .orElse(null);
-    if (user == null) {
-      return new ArrayList<>();
-    }
-
-    if (UserUtil.isGod(user)) {
-      return userDtos;
-    }
-
-    return userDtos.stream()
-        .filter(ut -> ObjectUtil.equals(ut.getDepartmentId(), user.getDepartmentId()))
-        .toList();
   }
 
   public List<UserDto> findUsersByIds(List<Long> userIds) {
@@ -74,12 +52,38 @@ public class UserService {
     return crmCrudClient.getUsers(-1, -1);
   }
 
-  public UserDto createNewUser(UserDto userDto) {
-    return crmCrudClient.createNewUser(userDto);
+  public void createNewUser(UserDto userDto) {
+    UserDto dbUserDto = crmCrudClient.createNewUser(userDto);
+    updateMember(dbUserDto, userDto.getMemberIds());
   }
 
-  public UserDto updateUser(Long id, FastMap userDto) {
-    return crmCrudClient.updateExistedUser(id, userDto);
+  public void updateUser(Long id, FastMap userDto) {
+    UserDto dbUserDto = crmCrudClient.updateExistedUser(id, userDto);
+    updateMember(dbUserDto, userDto.getListClass("memberIds", Long.class));
+  }
+
+  private void updateMember(UserDto dbUserDto, List<Long> memberIds) {
+    List<Long> dbMemberIds = dbUserDto.getMembers().stream().map(UserDto::getId).toList();
+    memberIds.forEach(
+        memberId -> {
+          if (!dbMemberIds.contains(memberId)) {
+            crmCrudClient.updateMember(
+                FastMap.create()
+                    .add("leaderId", dbUserDto.getId())
+                    .add("memberId", memberId)
+                    .add("action", Users.Action.ADD));
+          }
+        });
+    dbMemberIds.forEach(
+        dbMemberId -> {
+          if (!memberIds.contains(dbMemberId)) {
+            crmCrudClient.updateMember(
+                FastMap.create()
+                    .add("leaderId", dbUserDto.getId())
+                    .add("memberId", dbMemberId)
+                    .add("action", Users.Action.REMOVE));
+          }
+        });
   }
 
   public void deleteUser(Long id) {
