@@ -7,11 +7,10 @@ import com.dpvn.reportcrudservice.domain.dto.ConfigDto;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.thuocsi.domain.TsAddressDto;
 import com.dpvn.thuocsi.domain.TsCustomerDto;
+import java.util.List;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @FeignClient(name = "report-crud-service", contextId = "report-crud-service-client")
 public interface ReportCrudClient {
