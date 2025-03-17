@@ -3,13 +3,15 @@ package com.dpvn.crm.client;
 import com.dpvn.crm.voip24h.domain.ViCallLogDto;
 import com.dpvn.kiotviet.domain.KvCustomerDto;
 import com.dpvn.kiotviet.domain.KvUserDto;
+import com.dpvn.reportcrudservice.domain.dto.ConfigDto;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.thuocsi.domain.TsAddressDto;
 import com.dpvn.thuocsi.domain.TsCustomerDto;
-import java.util.List;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @FeignClient(name = "report-crud-service", contextId = "report-crud-service-client")
 public interface ReportCrudClient {
@@ -46,4 +48,10 @@ public interface ReportCrudClient {
       @PathVariable("caller") String caller,
       @RequestParam String fromDate,
       @RequestParam String toDate);
+
+  @PostMapping("/system/config/find-by")
+  List<ConfigDto> findConfigBy(@RequestBody FastMap body);
+
+  @PostMapping("/system/config/upsert-value")
+  void createConfig(@RequestBody ConfigDto configDto);
 }

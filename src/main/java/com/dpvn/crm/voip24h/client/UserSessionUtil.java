@@ -40,7 +40,7 @@ public class UserSessionUtil {
     UserInfo userInfo = new UserInfo();
     userInfo.setUrl("https://api.voip24h.vn/v3");
     userInfo.setAuthorization(token);
-    userInfo.setTimeout(43200); // expired and must re-login after a half day
+    userInfo.setTimeout(30); // expired and must re-login after 30 mins
     return userInfo;
   }
 }

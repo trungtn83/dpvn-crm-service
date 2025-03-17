@@ -1,24 +1,30 @@
 package com.dpvn.crm.voip24h;
 
-import com.dpvn.shared.config.CacheService;
+import com.dpvn.shared.util.FastMap;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
-@RequestMapping("/vi-call-log")
+@RequestMapping("/voip24h")
 public class ViCallLogController {
 
   private final ViCallLogService viCallLogService;
-  private final CacheService cacheService;
 
-  public ViCallLogController(ViCallLogService viCallLogService, CacheService cacheService) {
+  public ViCallLogController(ViCallLogService viCallLogService) {
     this.viCallLogService = viCallLogService;
-    this.cacheService = cacheService;
   }
 
-  @PostMapping("/sync-all")
+  @PostMapping("/calllog/sync-all")
   public void syncAllViCallLogs() {
     viCallLogService.syncAllCallLogs();
+  }
+
+  @GetMapping("/configuration/sync")
+  public List<FastMap> getAllConfigurationForSyncList() {
+    return viCallLogService.getAllConfigurationForSyncList();
   }
 }

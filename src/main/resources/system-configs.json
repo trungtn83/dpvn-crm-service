@@ -1,0 +1,10 @@
+{
+  "sync": [
+    {
+      "source": "VOIP24H",
+      "category": "SYNC",
+      "name": "CALLLOG",
+      "description": "Đồng bộ lịch sử cuộc gọi từ tổng đài Voip 24h"
+    }
+  ]
+}

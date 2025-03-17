@@ -4,14 +4,17 @@ import com.dpvn.crm.client.ReportCrudClient;
 import com.dpvn.crm.voip24h.client.Voip24hClient;
 import com.dpvn.crm.voip24h.domain.ViCallLogDto;
 import com.dpvn.crm.voip24h.domain.ViResponse;
+import com.dpvn.reportcrudservice.domain.dto.ConfigDto;
 import com.dpvn.shared.domain.constant.Globals;
 import com.dpvn.shared.util.DateUtil;
 import com.dpvn.shared.util.FastMap;
+import com.dpvn.shared.util.ResourceFileUtil;
 import com.dpvn.shared.util.StringUtil;
+import org.springframework.stereotype.Service;
+
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import org.springframework.stereotype.Service;
 
 @Service
 public class ViCallLogService {
@@ -21,6 +24,25 @@ public class ViCallLogService {
   public ViCallLogService(Voip24hClient voip24hClient, ReportCrudClient reportCrudClient) {
     this.voip24hClient = voip24hClient;
     this.reportCrudClient = reportCrudClient;
+  }
+
+  public List<FastMap> getAllConfigurationForSyncList() {
+    List<FastMap> syncs = ResourceFileUtil.readJsonFile("system-configs.json").getList("sync");
+
+    List<ConfigDto> configDtos =
+        reportCrudClient.findConfigBy(
+            FastMap.create().add("source", "VOIP24H").add("category", "SYNC"));
+    syncs.forEach(
+        sync ->
+            configDtos.stream()
+                .filter(
+                    config ->
+                        "LAST_SYNC".equals(config.getType())
+                            && sync.getString("name").equals(config.getName()))
+                .findFirst()
+                .ifPresent(
+                    configDto -> sync.add("lastUpdated", DateUtil.from(configDto.getValue()))));
+    return syncs;
   }
 
   public void syncAllCallLogs() {
@@ -36,6 +58,14 @@ public class ViCallLogService {
     while (syncCallLog(page, extractDate(from), extractDate(to))) {
       page++;
     }
+
+    ConfigDto configDto = new ConfigDto();
+    configDto.setSource("VOIP24H");
+    configDto.setCategory("SYNC");
+    configDto.setType("LAST_SYNC");
+    configDto.setName("CALLLOG");
+    configDto.setValue(DateUtil.now().toString());
+    reportCrudClient.createConfig(configDto);
   }
 
   private String extractDate(String dateTime) {
