@@ -190,7 +190,8 @@ public interface CrmCrudClient {
    * - toDate: string -> yyyy-MM-dd
    */
   @PostMapping("/sale-customer/find-by-sale")
-  List<SaleCustomerDto> findSaleCustomersBySale(@RequestBody FastMap body);
+  //  List<SaleCustomerDto> findSaleCustomersBySale(@RequestBody FastMap body);
+  FastMap findSaleCustomersBySale(@RequestBody FastMap body);
 
   // SALE-CUSTOMER-CATEGORY
   // ============================================================================================================
@@ -229,6 +230,9 @@ public interface CrmCrudClient {
   // ===========================================================================================================
   @PostMapping("/interaction/find-by-options")
   List<InteractionDto> findAllInteractions(@RequestBody FastMap body);
+
+  @PostMapping("/interaction/report-by-seller")
+  Long countReportInteractionBySeller(@RequestBody FastMap body);
 
   @PostMapping("/interaction")
   void createInteraction(@RequestBody InteractionDto body);

@@ -68,6 +68,9 @@ public class ViCallLogService {
   }
 
   private String extractDate(String dateTime) {
+    if (StringUtil.isEmpty(dateTime)) {
+      return null;
+    }
     List<String> parts = StringUtil.split(dateTime, " ");
     return parts.get(0);
   }

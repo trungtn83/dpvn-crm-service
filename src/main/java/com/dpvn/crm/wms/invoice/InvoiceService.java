@@ -5,7 +5,7 @@ import static com.dpvn.shared.util.DateUtil.LOCAL_DATE_FORMAT;
 import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crm.client.WmsCrudClient;
 import com.dpvn.crm.customer.CustomerService;
-import com.dpvn.crm.customer.WebHookHandlerService;
+import com.dpvn.crm.webhook.WebHookHandlerService;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
 import com.dpvn.shared.domain.constant.Globals;

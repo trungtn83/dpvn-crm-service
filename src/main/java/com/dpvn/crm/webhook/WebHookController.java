@@ -1,4 +1,4 @@
-package com.dpvn.crm.customer;
+package com.dpvn.crm.webhook;
 
 import com.dpvn.shared.util.FastMap;
 import org.slf4j.Logger;

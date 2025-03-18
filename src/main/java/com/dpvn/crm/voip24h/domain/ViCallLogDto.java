@@ -6,18 +6,25 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class ViCallLogDto extends BaseDto<ViCallLog> {
+  @JsonAlias("id")
   private String uuid;
+
+  @JsonAlias({"calldate", "callDate"})
   private String callDate;
+
   private String caller;
   private String callee;
   private String did;
   private String extension;
   private String type;
   private String status;
+
+  @JsonAlias({"callid", "callId"})
   private String callId;
+
   private Long duration;
 
-  @JsonAlias("billsec")
+  @JsonAlias({"billsec", "billSec"})
   private Long billSec;
 
   private String note;

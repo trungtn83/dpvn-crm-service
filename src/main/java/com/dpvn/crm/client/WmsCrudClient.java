@@ -12,11 +12,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 @FeignClient(name = "wms-crud-service", contextId = "wms-crud-service-client")
 public interface WmsCrudClient {
   /**
-   * @param body
-   * - status: String
-   * - customerIds: List<Long>
-   * @return
-   * - customerId: Long
+   * @param body - status: String
+   *             - customerIds: List<Long>
+   * @return - customerId: Long
    * - orderCode: String
    * - purchaseDate: Instant
    * - sellerId: Long
@@ -40,12 +38,13 @@ public interface WmsCrudClient {
   @PostMapping("/invoice/find-by-options")
   PagingResponse<InvoiceDto> findInvoicesByOptions(@RequestBody FastMap body);
 
+  @PostMapping("/invoice/report-by-seller")
+  FastMap reportInvoicesBySeller(@RequestBody FastMap body);
+
   /**
-   * @param body
-   * - status: String
-   * - customerIds: List<Long>
-   * @return
-   * - customerId: Long
+   * @param body - status: String
+   *             - customerIds: List<Long>
+   * @return - customerId: Long
    * - orderCode: String
    * - purchaseDate: Instant
    * - sellerId: Long

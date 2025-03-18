@@ -1,11 +1,14 @@
-package com.dpvn.crm.customer;
+package com.dpvn.crm.webhook;
 
 import com.dpvn.crm.client.KiotvietServiceClient;
+import com.dpvn.crm.client.ReportCrudClient;
 import com.dpvn.crm.client.WmsCrudClient;
+import com.dpvn.crm.customer.CustomerService;
 import com.dpvn.crm.customer.dto.InvoiceHookDto;
 import com.dpvn.crm.customer.dto.OrderHookDto;
 import com.dpvn.crm.customer.dto.PayloadDto;
 import com.dpvn.crm.user.UserService;
+import com.dpvn.crm.voip24h.domain.ViCallLogDto;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
 import com.dpvn.reportcrudservice.domain.constant.KvStatus;
@@ -18,12 +21,13 @@ import com.dpvn.shared.util.ObjectUtil;
 import com.dpvn.webhookhandler.domain.Topics;
 import com.dpvn.wmscrudservice.domain.dto.InvoiceDto;
 import com.fasterxml.jackson.core.type.TypeReference;
-import java.time.Instant;
-import java.util.List;
-import java.util.Objects;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
 
 @Service
 public class WebHookService extends AbstractService {
@@ -32,18 +36,21 @@ public class WebHookService extends AbstractService {
   private final WebHookHandlerService webHookHandlerService;
   private final KiotvietServiceClient kiotvietServiceClient;
   private final WmsCrudClient wmsCrudClient;
+  private final ReportCrudClient reportCrudClient;
 
   public WebHookService(
       UserService userService,
       CustomerService customerService,
       WebHookHandlerService webHookHandlerService,
       KiotvietServiceClient kiotvietServiceClient,
-      WmsCrudClient wmsCrudClient) {
+      WmsCrudClient wmsCrudClient,
+      ReportCrudClient reportCrudClient) {
     this.userService = userService;
     this.customerService = customerService;
     this.webHookHandlerService = webHookHandlerService;
     this.kiotvietServiceClient = kiotvietServiceClient;
     this.wmsCrudClient = wmsCrudClient;
+    this.reportCrudClient = reportCrudClient;
   }
 
   @KafkaListener(topics = Topics.KV_UPDATE_ORDER, groupId = "crm-group")
@@ -82,7 +89,8 @@ public class WebHookService extends AbstractService {
     // TODO: sync one customer by call back to kiotviet
     // data from hook does not have enough information to sync customer (wardname, extra phones...)
     // fuk kiotviet webhook here
-    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(value, new TypeReference<>() {});
+    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(value, new TypeReference<>() {
+    });
     payloadDto
         .getNotifications()
         .forEach(
@@ -94,12 +102,21 @@ public class WebHookService extends AbstractService {
                             kiotvietServiceClient.syncCustomer(customerHookDto.getId())));
   }
 
+  @KafkaListener(topics = Topics.VOIP24H_CALL_LOGS_UPDATE, groupId = "voip24h-group")
+  public void handleUpdateCallLogMessage(ConsumerRecord<String, String> message) {
+    String value = message.value();
+    LOGGER.info("Received {} payload: {}", "CALLLOG", value);
+    ViCallLogDto viCallLogDto = ObjectUtil.readValue(value, ViCallLogDto.class);
+    reportCrudClient.syncAllCallLogs(List.of(viCallLogDto));
+  }
+
   private void validatePayload(String type, String payload) {
-    PayloadDto<?> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {});
+    PayloadDto<?> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {
+    });
     if (payloadDto.getId() == null
         || ListUtil.isEmpty(payloadDto.getNotifications())
         || payloadDto.getNotifications().stream()
-            .anyMatch(notification -> ListUtil.isEmpty(notification.getData()))) {
+        .anyMatch(notification -> ListUtil.isEmpty(notification.getData()))) {
       LOGGER.error("Received {} payload in mal-format", type);
 
       throw new BadRequestException("Invalid payload");
@@ -108,7 +125,8 @@ public class WebHookService extends AbstractService {
 
   public void processOrder(String payload) {
     LOGGER.info("Received {} payload: {}", "ORDER", payload);
-    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {});
+    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {
+    });
     validatePayload("ORDER", payload);
     payloadDto
         .getNotifications()
@@ -164,7 +182,8 @@ public class WebHookService extends AbstractService {
   }
 
   public void processInvoice(String payload) {
-    PayloadDto<InvoiceHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {});
+    PayloadDto<InvoiceHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {
+    });
     validatePayload("invoice", payload);
     payloadDto
         .getNotifications()

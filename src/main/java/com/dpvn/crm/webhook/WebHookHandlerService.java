@@ -1,6 +1,7 @@
-package com.dpvn.crm.customer;
+package com.dpvn.crm.webhook;
 
 import com.dpvn.crm.client.CrmCrudClient;
+import com.dpvn.crm.customer.SaleCustomerService;
 import com.dpvn.crmcrudservice.domain.constant.RelationshipType;
 import com.dpvn.crmcrudservice.domain.constant.SaleCustomers;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
@@ -82,7 +83,9 @@ public class WebHookHandlerService extends AbstractService {
         customer);
   }
 
-  /** Khi tạo ra confirmed order: tạo record mới cho sale với khách đó trong 3 tháng */
+  /**
+   * Khi tạo ra confirmed order: tạo record mới cho sale với khách đó trong 3 tháng
+   */
   public void handleConfirmedOrder(
       UserDto sale, CustomerDto customer, String code, Instant purchaseDate) {
     Instant from = purchaseDate != null ? purchaseDate : DateUtil.now();
@@ -149,7 +152,9 @@ public class WebHookHandlerService extends AbstractService {
     }
   }
 
-  /** Khi Invoice là completed: hình như chưa cần làm gì */
+  /**
+   * Khi Invoice là completed: hình như chưa cần làm gì
+   */
   public void handleCompletedInvoice(
       UserDto sale, CustomerDto customer, String code, Instant purchaseDate) {
     handleInProgressInvoice(sale, customer, code, purchaseDate);
