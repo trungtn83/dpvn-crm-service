@@ -21,13 +21,12 @@ import com.dpvn.shared.util.ObjectUtil;
 import com.dpvn.webhookhandler.domain.Topics;
 import com.dpvn.wmscrudservice.domain.dto.InvoiceDto;
 import com.fasterxml.jackson.core.type.TypeReference;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Service;
 
 @Service
 public class WebHookService extends AbstractService {
@@ -89,8 +88,7 @@ public class WebHookService extends AbstractService {
     // TODO: sync one customer by call back to kiotviet
     // data from hook does not have enough information to sync customer (wardname, extra phones...)
     // fuk kiotviet webhook here
-    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(value, new TypeReference<>() {
-    });
+    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(value, new TypeReference<>() {});
     payloadDto
         .getNotifications()
         .forEach(
@@ -111,12 +109,11 @@ public class WebHookService extends AbstractService {
   }
 
   private void validatePayload(String type, String payload) {
-    PayloadDto<?> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {
-    });
+    PayloadDto<?> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {});
     if (payloadDto.getId() == null
         || ListUtil.isEmpty(payloadDto.getNotifications())
         || payloadDto.getNotifications().stream()
-        .anyMatch(notification -> ListUtil.isEmpty(notification.getData()))) {
+            .anyMatch(notification -> ListUtil.isEmpty(notification.getData()))) {
       LOGGER.error("Received {} payload in mal-format", type);
 
       throw new BadRequestException("Invalid payload");
@@ -125,8 +122,7 @@ public class WebHookService extends AbstractService {
 
   public void processOrder(String payload) {
     LOGGER.info("Received {} payload: {}", "ORDER", payload);
-    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {
-    });
+    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {});
     validatePayload("ORDER", payload);
     payloadDto
         .getNotifications()
@@ -182,8 +178,7 @@ public class WebHookService extends AbstractService {
   }
 
   public void processInvoice(String payload) {
-    PayloadDto<InvoiceHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {
-    });
+    PayloadDto<InvoiceHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {});
     validatePayload("invoice", payload);
     payloadDto
         .getNotifications()
