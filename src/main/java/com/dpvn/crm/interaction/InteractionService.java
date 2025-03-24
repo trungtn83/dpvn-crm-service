@@ -59,6 +59,8 @@ public class InteractionService {
   }
 
   public void createInteraction(@RequestBody InteractionDto body) {
+    body.setActive(Boolean.TRUE);
+    body.setDeleted(Boolean.FALSE);
     crmCrudClient.createInteraction(body);
   }
 }

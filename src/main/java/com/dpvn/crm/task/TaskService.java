@@ -76,10 +76,10 @@ public class TaskService {
     return result.add("rows", rows);
   }
 
-  public List<TaskDto> findTasksReportBySeller(Long saleId, String fromDate, String toDate) {
+  public List<TaskDto> findTasksReportBySeller(Long sellerId, String fromDate, String toDate) {
     FastMap body =
         FastMap.create()
-            .add("userId", saleId)
+            .add("sellerId", sellerId)
             .add("progress", List.of(Tasks.Progress.DONE))
             .add("fromDate", fromDate)
             .add("toDate", toDate);

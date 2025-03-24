@@ -1,10 +1,14 @@
 package com.dpvn.crm.client;
 
 import com.dpvn.crmcrudservice.domain.dto.*;
+import com.dpvn.crmcrudservice.domain.entity.report.CustomerBySeller;
+import com.dpvn.crmcrudservice.domain.entity.report.InteractionBySeller;
+import com.dpvn.crmcrudservice.domain.entity.report.TaskBySeller;
 import com.dpvn.shared.domain.dto.AddressDto;
 import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.util.FastMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
@@ -222,17 +226,10 @@ public interface CrmCrudClient {
   @DeleteMapping("/task/{id}")
   void deleteTask(@PathVariable Long id);
 
-  @GetMapping("/task/report-by-seller")
-  List<TaskDto> findTasksReportBySeller(
-      @RequestParam Long sellerId, @RequestParam String fromDate, @RequestParam String toDate);
-
   // INTERACTION
   // ===========================================================================================================
   @PostMapping("/interaction/find-by-options")
   List<InteractionDto> findAllInteractions(@RequestBody FastMap body);
-
-  @PostMapping("/interaction/report-by-seller")
-  Long countReportInteractionBySeller(@RequestBody FastMap body);
 
   @PostMapping("/interaction")
   void createInteraction(@RequestBody InteractionDto body);
@@ -254,4 +251,33 @@ public interface CrmCrudClient {
 
   @PostMapping("/campaign/{id}/assign-customers-to-sales")
   void assignToSaleInCampaign(@PathVariable Long id, @RequestBody FastMap body);
+
+  // REPORT
+
+  @PostMapping("/interaction/report-by-seller")
+  Long countReportInteractionBySeller(@RequestBody FastMap body);
+
+  /**
+   * sellerIds: List<Long>
+   * fromDate: yyyy-MM-dd
+   * toDate: yyyy-MM-dd
+   */
+  @PostMapping("/report/customer/by-sellers")
+  Map<Long, List<CustomerBySeller>> reportCustomersBySellers(@RequestBody FastMap body);
+
+  /**
+   * sellerIds: List<Long>
+   * fromDate: yyyy-MM-dd
+   * toDate: yyyy-MM-dd
+   */
+  @PostMapping("/report/interaction/by-sellers")
+  Map<Long, List<InteractionBySeller>> reportInteractionsBySellers(@RequestBody FastMap body);
+
+  /**
+   * sellerIds: List<Long>
+   * fromDate: yyyy-MM-dd
+   * toDate: yyyy-MM-dd
+   */
+  @PostMapping("/report/task/by-sellers")
+  Map<Long, List<TaskBySeller>> reportTasksBySellers(@RequestBody FastMap body);
 }

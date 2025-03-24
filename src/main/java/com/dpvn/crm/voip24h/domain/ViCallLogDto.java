@@ -6,21 +6,35 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class ViCallLogDto extends BaseDto<ViCallLog> {
+  @JsonAlias("msgid")
+  private String msgId;
+
   @JsonAlias("id")
   private String uuid;
 
   @JsonAlias({"calldate", "callDate"})
   private String callDate;
 
-  private String caller;
-  private String callee;
-  private String did;
-  private String extension;
-  private String type;
-  private String status;
-
   @JsonAlias({"callid", "callId"})
   private String callId;
+
+  @JsonAlias({"caller", "src"})
+  private String caller;
+
+  @JsonAlias({"callee", "dst"})
+  private String callee;
+
+  private String did;
+
+  @JsonAlias({"caller", "src"})
+  private String extension;
+
+  private String type;
+  private String status;
+  private String disposition;
+
+  @JsonAlias("lastapp")
+  private String lastApp;
 
   private Long duration;
 
@@ -28,7 +42,14 @@ public class ViCallLogDto extends BaseDto<ViCallLog> {
   private Long billSec;
 
   private String note;
-  private String recordingFile;
+  // for webhook
+  private String recording;
+  private String play;
+
+  @JsonAlias("eplay")
+  private String ePlay;
+
+  private String download;
 
   public ViCallLogDto() {
     super(ViCallLog.class);
@@ -139,11 +160,59 @@ public class ViCallLogDto extends BaseDto<ViCallLog> {
     this.note = note;
   }
 
-  public String getRecordingFile() {
-    return recordingFile;
+  public String getMsgId() {
+    return msgId;
   }
 
-  public void setRecordingFile(String recordingFile) {
-    this.recordingFile = recordingFile;
+  public void setMsgId(String msgId) {
+    this.msgId = msgId;
+  }
+
+  public String getDisposition() {
+    return disposition;
+  }
+
+  public void setDisposition(String disposition) {
+    this.disposition = disposition;
+  }
+
+  public String getLastApp() {
+    return lastApp;
+  }
+
+  public void setLastApp(String lastApp) {
+    this.lastApp = lastApp;
+  }
+
+  public String getRecording() {
+    return recording;
+  }
+
+  public void setRecording(String recording) {
+    this.recording = recording;
+  }
+
+  public String getPlay() {
+    return play;
+  }
+
+  public void setPlay(String play) {
+    this.play = play;
+  }
+
+  public String getePlay() {
+    return ePlay;
+  }
+
+  public void setePlay(String ePlay) {
+    this.ePlay = ePlay;
+  }
+
+  public String getDownload() {
+    return download;
+  }
+
+  public void setDownload(String download) {
+    this.download = download;
   }
 }

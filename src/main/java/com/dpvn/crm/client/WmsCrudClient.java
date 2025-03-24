@@ -4,7 +4,9 @@ import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.wmscrudservice.domain.dto.InvoiceDto;
 import com.dpvn.wmscrudservice.domain.dto.OrderDto;
+import com.dpvn.wmscrudservice.domain.entity.report.InvoiceBySeller;
 import java.util.List;
+import java.util.Map;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,8 +40,21 @@ public interface WmsCrudClient {
   @PostMapping("/invoice/find-by-options")
   PagingResponse<InvoiceDto> findInvoicesByOptions(@RequestBody FastMap body);
 
+  /**
+   * sellerId: Long
+   * fromDate: yyyy-MM-dd
+   * toDate: yyyy-MM-dd
+   */
   @PostMapping("/invoice/report-by-seller")
   FastMap reportInvoicesBySeller(@RequestBody FastMap body);
+
+  /**
+   * sellerIds: List<Long>
+   * fromDate: yyyy-MM-dd
+   * toDate: yyyy-MM-dd
+   */
+  @PostMapping("/invoice/report-by-sellers")
+  Map<Long, List<InvoiceBySeller>> reportInvoicesBySellers(@RequestBody FastMap body);
 
   /**
    * @param body - status: String

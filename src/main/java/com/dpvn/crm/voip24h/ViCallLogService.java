@@ -6,14 +6,12 @@ import com.dpvn.crm.voip24h.domain.ViCallLogDto;
 import com.dpvn.crm.voip24h.domain.ViResponse;
 import com.dpvn.reportcrudservice.domain.dto.ConfigDto;
 import com.dpvn.shared.domain.constant.Globals;
-import com.dpvn.shared.util.DateUtil;
-import com.dpvn.shared.util.FastMap;
-import com.dpvn.shared.util.ResourceFileUtil;
-import com.dpvn.shared.util.StringUtil;
+import com.dpvn.shared.util.*;
+import org.springframework.stereotype.Service;
+
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import org.springframework.stereotype.Service;
 
 @Service
 public class ViCallLogService {
@@ -95,6 +93,8 @@ public class ViCallLogService {
   private ViCallLogDto transformToCallLogDto(FastMap data) {
     ViCallLogDto dto = new ViCallLogDto();
     dto.setUuid(data.getString("id"));
+    String callId = data.getString("callId");
+    dto.setCallId(callId);
     dto.setCallDate(data.getString("callDate"));
     dto.setCaller(data.getString("caller"));
     dto.setCallee(data.getString("callee"));
@@ -104,9 +104,32 @@ public class ViCallLogService {
     dto.setStatus(data.getString("status"));
     dto.setCallId(data.getString("callId"));
     dto.setDuration(data.getLong("duration"));
-    dto.setBillSec(data.getLong("billsec"));
+    Long billSec = data.getLong("billsec");
+    dto.setBillSec(billSec);
     dto.setNote(data.getString("note"));
-    dto.setRecordingFile(data.getString("recordingFile"));
+    if (billSec > 0) {
+      String callRecordingUrl = getCallRecordingFile(callId);
+      if (StringUtil.isNotEmpty(callRecordingUrl)) {
+        dto.setRecording(callRecordingUrl);
+        dto.setPlay(callRecordingUrl);
+        dto.setePlay(callRecordingUrl);
+        dto.setDownload(callRecordingUrl);
+      }
+    }
     return dto;
+  }
+
+  private String getCallRecordingFile(String callId) {
+    ViResponse response = voip24hClient.getCallRecording(callId);
+    List<FastMap> recordings = response.getData();
+    if (ListUtil.isEmpty(recordings)) {
+      return null;
+    }
+    FastMap data = recordings.get(0);
+    FastMap media = data.getMap("media");
+    if (media == null || media.isEmpty()) {
+      return null;
+    }
+    return media.getString("ogg");
   }
 }

@@ -4,10 +4,12 @@ import com.dpvn.crm.voip24h.domain.ViCallLogDto;
 import com.dpvn.kiotviet.domain.KvCustomerDto;
 import com.dpvn.kiotviet.domain.KvUserDto;
 import com.dpvn.reportcrudservice.domain.dto.ConfigDto;
+import com.dpvn.reportcrudservice.domain.report.CallLogBySeller;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.thuocsi.domain.TsAddressDto;
 import com.dpvn.thuocsi.domain.TsCustomerDto;
 import java.util.List;
+import java.util.Map;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
@@ -42,15 +44,13 @@ public interface ReportCrudClient {
   @GetMapping("/voip24h/calllog/latest-call-time")
   ViCallLogDto findLastCallTime();
 
-  @GetMapping("/voip24h/calllog/report/{caller}")
-  List<ViCallLogDto> findCallLogsByCaller(
-      @PathVariable("caller") String caller,
-      @RequestParam String fromDate,
-      @RequestParam String toDate);
-
   @PostMapping("/system/config/find-by")
   List<ConfigDto> findConfigBy(@RequestBody FastMap body);
 
   @PostMapping("/system/config/upsert-value")
   void createConfig(@RequestBody ConfigDto configDto);
+
+  // REPORT
+  @PostMapping("/report/calllog/by-sellers")
+  Map<String, List<CallLogBySeller>> reportCallLogsBySellers(@RequestBody FastMap body);
 }

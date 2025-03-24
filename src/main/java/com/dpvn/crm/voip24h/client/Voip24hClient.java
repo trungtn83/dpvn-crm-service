@@ -32,4 +32,7 @@ public interface Voip24hClient {
    */
   @GetMapping("/call/history")
   ViResponse getCallHistory(@RequestParam FastMap params);
+
+  @GetMapping("/call/recording")
+  ViResponse getCallRecording(@RequestParam String callId);
 }
