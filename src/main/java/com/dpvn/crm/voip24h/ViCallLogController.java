@@ -2,10 +2,7 @@ package com.dpvn.crm.voip24h;
 
 import com.dpvn.shared.util.FastMap;
 import java.util.List;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/voip24h")
@@ -18,8 +15,10 @@ public class ViCallLogController {
   }
 
   @PostMapping("/calllog/sync-all")
-  public void syncAllViCallLogs() {
-    viCallLogService.syncAllCallLogs();
+  public void syncAllViCallLogs(
+      @RequestParam(required = false) String fromDateTime,
+      @RequestParam(required = false) String toDateTime) {
+    viCallLogService.syncAllCallLogs(fromDateTime, toDateTime);
   }
 
   @GetMapping("/configuration/sync")

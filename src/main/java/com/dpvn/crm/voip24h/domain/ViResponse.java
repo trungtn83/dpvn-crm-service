@@ -18,6 +18,9 @@ public class ViResponse {
   }
 
   public List<FastMap> getData() {
+    if (data == null) {
+      return List.of();
+    }
     if (data instanceof List) {
       return ObjectUtil.readValue(data, new TypeReference<>() {});
     }

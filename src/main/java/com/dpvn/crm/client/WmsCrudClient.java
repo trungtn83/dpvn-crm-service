@@ -41,14 +41,6 @@ public interface WmsCrudClient {
   PagingResponse<InvoiceDto> findInvoicesByOptions(@RequestBody FastMap body);
 
   /**
-   * sellerId: Long
-   * fromDate: yyyy-MM-dd
-   * toDate: yyyy-MM-dd
-   */
-  @PostMapping("/invoice/report-by-seller")
-  FastMap reportInvoicesBySeller(@RequestBody FastMap body);
-
-  /**
    * sellerIds: List<Long>
    * fromDate: yyyy-MM-dd
    * toDate: yyyy-MM-dd

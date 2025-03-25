@@ -7,14 +7,17 @@ import com.dpvn.crm.voip24h.domain.ViResponse;
 import com.dpvn.reportcrudservice.domain.dto.ConfigDto;
 import com.dpvn.shared.domain.constant.Globals;
 import com.dpvn.shared.util.*;
-import org.springframework.stereotype.Service;
-
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 @Service
 public class ViCallLogService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ViCallLogService.class);
+
   private final Voip24hClient voip24hClient;
   private final ReportCrudClient reportCrudClient;
 
@@ -42,19 +45,25 @@ public class ViCallLogService {
     return syncs;
   }
 
-  public void syncAllCallLogs() {
+  public void syncAllCallLogs(String fromDateTime, String toDateTime) {
     ViCallLogDto lastSyncCallLog = reportCrudClient.findLastCallTime();
-    String from = lastSyncCallLog == null ? null : lastSyncCallLog.getCallDate();
+    String from = lastSyncCallLog == null ? "2024-06-12 00:00:00" : lastSyncCallLog.getCallDate();
     String to =
         LocalDate.now(DateUtil.LOCAL_ZONE_ID)
             .atStartOfDay()
             .plusDays(1)
             .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+    if (StringUtil.isNotEmpty(fromDateTime) && StringUtil.isNotEmpty(toDateTime)) {
+      from = fromDateTime;
+      to = toDateTime;
+    }
 
     int page = 0;
     while (syncCallLog(page, extractDate(from), extractDate(to))) {
       page++;
     }
+
+    LOGGER.info("Sync DONE all call logs from {} to {}", from, to);
 
     ConfigDto configDto = new ConfigDto();
     configDto.setSource("VOIP24H");
@@ -78,16 +87,25 @@ public class ViCallLogService {
         FastMap.create()
             .add("offset", page * Globals.Paging.FETCHING_PAGE_SIZE)
             .add("limit", Globals.Paging.FETCHING_PAGE_SIZE)
+            .add("dateStart", from)
             .add("dateEnd", to);
-    if (from != null) {
-      params.add("dateStart", from);
-    }
 
-    ViResponse response = voip24hClient.getCallHistory(params);
-    List<FastMap> datas = response.getData();
-    List<ViCallLogDto> callLogs = datas.stream().map(this::transformToCallLogDto).toList();
-    reportCrudClient.syncAllCallLogs(callLogs);
-    return datas.size() == Globals.Paging.FETCHING_PAGE_SIZE;
+    try {
+      ViResponse response = voip24hClient.getCallHistory(params);
+      List<FastMap> datas = response.getData();
+      List<ViCallLogDto> callLogs = datas.stream().map(this::transformToCallLogDto).toList();
+      reportCrudClient.syncAllCallLogs(callLogs);
+      LOGGER.info(
+          "syncCallLog at page {}, from={}, to={}: get and send to data {} items",
+          page,
+          from,
+          to,
+          datas.size());
+      return datas.size() == Globals.Paging.FETCHING_PAGE_SIZE;
+    } catch (Exception e) {
+      LOGGER.error("syncCallLog error={}", e.getMessage(), e);
+      return false;
+    }
   }
 
   private ViCallLogDto transformToCallLogDto(FastMap data) {
@@ -120,8 +138,8 @@ public class ViCallLogService {
   }
 
   private String getCallRecordingFile(String callId) {
-    ViResponse response = voip24hClient.getCallRecording(callId);
-    List<FastMap> recordings = response.getData();
+    SystemUtil.sleep(1, 2, "Avoid too many sync call logs when get recording");
+    List<FastMap> recordings = getRecordings(callId);
     if (ListUtil.isEmpty(recordings)) {
       return null;
     }
@@ -131,5 +149,15 @@ public class ViCallLogService {
       return null;
     }
     return media.getString("ogg");
+  }
+
+  private List<FastMap> getRecordings(String callId) {
+    try {
+      ViResponse response = voip24hClient.getCallRecording(callId);
+      return response.getData();
+    } catch (Exception e) {
+      LOGGER.error("getRecordings error={}", e.getMessage(), e);
+      return List.of();
+    }
   }
 }

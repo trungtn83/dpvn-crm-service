@@ -4,11 +4,11 @@ import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crm.client.ReportCrudClient;
 import com.dpvn.crm.client.WmsCrudClient;
 import com.dpvn.crm.helper.PhoneNumberUtil;
+import com.dpvn.crm.report.domain.PerformanceBySellerDetail;
 import com.dpvn.crm.user.UserService;
-import com.dpvn.crmcrudservice.domain.constant.Users;
+import com.dpvn.crm.user.UserUtil;
 import com.dpvn.crmcrudservice.domain.constant.Visibility;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
-import com.dpvn.crmcrudservice.domain.dto.UserPropertyDto;
 import com.dpvn.crmcrudservice.domain.entity.report.CustomerBySeller;
 import com.dpvn.crmcrudservice.domain.entity.report.InteractionBySeller;
 import com.dpvn.crmcrudservice.domain.entity.report.TaskBySeller;
@@ -16,12 +16,12 @@ import com.dpvn.reportcrudservice.domain.report.CallLogBySeller;
 import com.dpvn.shared.exception.BadRequestException;
 import com.dpvn.shared.service.AbstractService;
 import com.dpvn.shared.util.FastMap;
-import com.dpvn.shared.util.ListUtil;
+import com.dpvn.shared.util.LocalDateUtil;
+import com.dpvn.shared.util.StringUtil;
 import com.dpvn.wmscrudservice.domain.entity.report.InvoiceBySeller;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -44,27 +44,8 @@ public class SellerReportService extends AbstractService {
 
   public List<FastMap> reportSales(Long loginUserId, String fromDate, String toDate) {
     UserDto loginUserDto = userService.findById(loginUserId);
-    List<UserDto> userDtos =
-        new ArrayList<>(
-            loginUserDto.getMembers()); // clone new one to avoid change loginUserDto.members() list
-    if (!userService.isGod(loginUserDto)) {
-      userDtos.add(0, loginUserDto);
-    } else {
-      userDtos.clear();
-      List<UserDto> response = userService.listAllUsers().getRows();
-      userDtos.addAll(
-          response.stream()
-              .filter(
-                  u ->
-                      u.getActive()
-                          && (u.getDepartment() != null
-                              && u.getDepartment()
-                                  .getDepartmentName()
-                                  .equals(Users.Department.SALE)))
-              .toList());
-    }
+    List<UserDto> userDtos = userService.getUserMembers(loginUserDto);
 
-    // calling paralell for performance improvement
     List<Long> sellerIdfs = userDtos.stream().map(UserDto::getIdf).toList();
     Map<Long, List<InvoiceBySeller>> invoicesBySellerMap =
         wmsCrudClient.reportInvoicesBySellers(
@@ -96,7 +77,10 @@ public class SellerReportService extends AbstractService {
                 .add("toDate", toDate));
 
     List<String> sellerVoip24hCodes =
-        userDtos.stream().map(this::getVoip24hCodeForBySeller).filter(Objects::nonNull).toList();
+        userDtos.stream()
+            .map(UserUtil::getVoip24hCodeForBySeller)
+            .filter(Objects::nonNull)
+            .toList();
     Map<String, List<CallLogBySeller>> callLogsBySellerMap =
         reportCrudClient.reportCallLogsBySellers(
             FastMap.create()
@@ -107,7 +91,7 @@ public class SellerReportService extends AbstractService {
     return userDtos.stream()
         .map(
             userDto ->
-                reportSaleDetail(
+                reportSales(
                     loginUserDto,
                     userDto,
                     invoicesBySellerMap.getOrDefault(userDto.getIdf(), List.of()),
@@ -115,7 +99,7 @@ public class SellerReportService extends AbstractService {
                     interactionsBySellerMap.getOrDefault(userDto.getId(), List.of()),
                     tasksBySellerMap.getOrDefault(userDto.getId(), List.of()),
                     callLogsBySellerMap.getOrDefault(
-                        getVoip24hCodeForBySeller(userDto), List.of())))
+                        UserUtil.getVoip24hCodeForBySeller(userDto), List.of())))
         .toList();
   }
 
@@ -123,7 +107,7 @@ public class SellerReportService extends AbstractService {
    * fromDate: String in format of LocalDate 2025-01-23
    * toDate: String in format of LocalDate 2025-01-25
    */
-  private FastMap reportSaleDetail(
+  private FastMap reportSales(
       UserDto loginUserDto,
       UserDto sellerDto,
       List<InvoiceBySeller> invoicesBySeller,
@@ -168,18 +152,127 @@ public class SellerReportService extends AbstractService {
     throw new BadRequestException("Can not view this sale");
   }
 
-  private String getVoip24hCodeForBySeller(UserDto sellerDto) {
-    if (ListUtil.isEmpty(sellerDto.getProperties())) {
-      return null;
+  public FastMap reportSaleDetail(
+      Long loginUserId, Long sellerId, String fromDateStr, String toDateStr) {
+    List<UserDto> userDtos = userService.findUsersByIds(List.of(loginUserId, sellerId));
+    UserDto loginUserDto =
+        userDtos.stream().filter(u -> u.getId().equals(loginUserId)).findFirst().orElse(null);
+    UserDto sellerDto =
+        userDtos.stream().filter(u -> u.getId().equals(sellerId)).findFirst().orElse(null);
+    if (loginUserDto == null
+        || sellerDto == null
+        || !UserUtil.isReportable(loginUserDto, sellerDto)) {
+      throw new BadRequestException("Can not view this sale");
     }
-    UserPropertyDto voip24hPropertyDto =
-        sellerDto.getProperties().stream()
-            .filter(p -> Users.Property.VOIP24H.equals(p.getCode()))
-            .findFirst()
-            .orElse(null);
-    if (voip24hPropertyDto == null) {
-      return null;
-    }
-    return voip24hPropertyDto.getValue();
+
+    sellerDto.setPassword(null);
+    return FastMap.create()
+        .add("seller", sellerDto)
+        .add("details", reportPerformanceBySellerDetail(sellerDto, fromDateStr, toDateStr));
+  }
+
+  private List<PerformanceBySellerDetail> reportPerformanceBySellerDetail(
+      UserDto sellerDto, String fromDateStr, String toDateStr) {
+    Long sellerIdf = sellerDto.getIdf();
+    List<Long> sellerIdfs = List.of(sellerIdf);
+    List<InvoiceBySeller> invoices =
+        wmsCrudClient
+            .reportInvoicesBySellers(
+                FastMap.create()
+                    .add("sellerIds", sellerIdfs)
+                    .add("fromDate", fromDateStr)
+                    .add("toDate", toDateStr))
+            .getOrDefault(sellerIdf, List.of());
+    Map<LocalDate, List<InvoiceBySeller>> invoicesBySellerMapByLocalDate =
+        invoices.stream()
+            .collect(
+                Collectors.groupingBy(invoice -> LocalDateUtil.from(invoice.getPurchaseDate())));
+
+    Long sellerId = sellerDto.getId();
+    List<Long> sellerIds = List.of(sellerDto.getId());
+    List<CustomerBySeller> customers =
+        crmCrudClient
+            .reportCustomersBySellers(
+                FastMap.create()
+                    .add("sellerIds", sellerIds)
+                    .add("fromDate", fromDateStr)
+                    .add("toDate", toDateStr))
+            .getOrDefault(sellerId, List.of());
+    Map<LocalDate, List<CustomerBySeller>> customersBySellerMapByLocalDate =
+        customers.stream()
+            .collect(
+                Collectors.groupingBy(customer -> LocalDateUtil.from(customer.getCreatedDate())));
+
+    List<InteractionBySeller> interactions =
+        crmCrudClient
+            .reportInteractionsBySellers(
+                FastMap.create()
+                    .add("sellerIds", sellerIds)
+                    .add("fromDate", fromDateStr)
+                    .add("toDate", toDateStr))
+            .getOrDefault(sellerId, List.of());
+    Map<LocalDate, List<InteractionBySeller>> interactionsBySellerMapByLocalDate =
+        interactions.stream()
+            .collect(
+                Collectors.groupingBy(
+                    interaction -> LocalDateUtil.from(interaction.getCreatedDate())));
+
+    List<TaskBySeller> tasks =
+        crmCrudClient
+            .reportTasksBySellers(
+                FastMap.create()
+                    .add("sellerIds", sellerIds)
+                    .add("fromDate", fromDateStr)
+                    .add("toDate", toDateStr))
+            .getOrDefault(sellerId, List.of());
+    Map<LocalDate, List<TaskBySeller>> tasksBySellerByLocalDate =
+        tasks.stream()
+            .collect(Collectors.groupingBy(task -> LocalDateUtil.from(task.getModifiedDate())));
+
+    String voip24hSellerCode = UserUtil.getVoip24hCodeForBySeller(sellerDto);
+    Map<LocalDate, List<CallLogBySeller>> callLogsBySellerByLocalDate =
+        StringUtil.isEmpty(voip24hSellerCode)
+            ? Map.of()
+            : getCallLogsBySellerByLocalDate(voip24hSellerCode, fromDateStr, toDateStr);
+
+    Set<LocalDate> allDates = new HashSet<>();
+    allDates.addAll(invoicesBySellerMapByLocalDate.keySet());
+    allDates.addAll(customersBySellerMapByLocalDate.keySet());
+    allDates.addAll(interactionsBySellerMapByLocalDate.keySet());
+    allDates.addAll(tasksBySellerByLocalDate.keySet());
+    allDates.addAll(callLogsBySellerByLocalDate.keySet());
+
+    return allDates.stream()
+        .map(
+            date -> {
+              PerformanceBySellerDetail performanceBySellerDetail = new PerformanceBySellerDetail();
+              performanceBySellerDetail.setDay(date);
+              performanceBySellerDetail.setInvoices(
+                  invoicesBySellerMapByLocalDate.getOrDefault(date, List.of()));
+              performanceBySellerDetail.setCustomers(
+                  customersBySellerMapByLocalDate.getOrDefault(date, List.of()));
+              performanceBySellerDetail.setInteractions(
+                  interactionsBySellerMapByLocalDate.getOrDefault(date, List.of()));
+              performanceBySellerDetail.setTasks(
+                  tasksBySellerByLocalDate.getOrDefault(date, List.of()));
+              performanceBySellerDetail.setCallLogs(
+                  callLogsBySellerByLocalDate.getOrDefault(date, List.of()));
+              return performanceBySellerDetail;
+            })
+        .toList();
+  }
+
+  private Map<LocalDate, List<CallLogBySeller>> getCallLogsBySellerByLocalDate(
+      String voip24hSellerCode, String fromDateStr, String toDateStr) {
+    List<CallLogBySeller> callLogs =
+        reportCrudClient
+            .reportCallLogsBySellers(
+                FastMap.create()
+                    .add("sellerVoip24hCodes", List.of(voip24hSellerCode))
+                    .add("fromDate", fromDateStr)
+                    .add("toDate", toDateStr))
+            .getOrDefault(voip24hSellerCode, List.of());
+    return callLogs.stream()
+        .collect(Collectors.groupingBy(callLog -> LocalDateUtil.from(callLog.getCallDate())));
   }
 }

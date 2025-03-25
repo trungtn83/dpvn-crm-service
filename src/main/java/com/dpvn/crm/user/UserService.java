@@ -6,6 +6,7 @@ import com.dpvn.crmcrudservice.domain.constant.Users;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
 import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.util.FastMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -97,5 +98,28 @@ public class UserService {
 
   public boolean isGod(UserDto user) {
     return UserUtil.isGod(user);
+  }
+
+  public List<UserDto> getUserMembers(UserDto userDto) {
+    List<UserDto> userDtos =
+        new ArrayList<>(
+            userDto.getMembers()); // clone new one to avoid change loginUserDto.members() list
+    if (!isGod(userDto)) {
+      userDtos.add(0, userDto);
+    } else {
+      userDtos.clear();
+      List<UserDto> response = listAllUsers().getRows();
+      userDtos.addAll(
+          response.stream()
+              .filter(
+                  u ->
+                      u.getActive()
+                          && (u.getDepartment() != null
+                              && u.getDepartment()
+                                  .getDepartmentName()
+                                  .equals(Users.Department.SALE)))
+              .toList());
+    }
+    return userDtos;
   }
 }
