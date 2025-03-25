@@ -3,9 +3,8 @@ package com.dpvn.crm.report;
 import com.dpvn.crm.report.domain.PerformanceBySellerDetail;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.LocalDateUtil;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/report")
