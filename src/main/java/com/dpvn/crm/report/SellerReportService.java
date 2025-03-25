@@ -19,10 +19,11 @@ import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.LocalDateUtil;
 import com.dpvn.shared.util.StringUtil;
 import com.dpvn.wmscrudservice.domain.entity.report.InvoiceBySeller;
+import org.springframework.stereotype.Service;
+
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
-import org.springframework.stereotype.Service;
 
 @Service
 public class SellerReportService extends AbstractService {
@@ -152,7 +153,7 @@ public class SellerReportService extends AbstractService {
     throw new BadRequestException("Can not view this sale");
   }
 
-  public FastMap reportSaleDetail(
+  public List<PerformanceBySellerDetail> reportSaleDetail(
       Long loginUserId, Long sellerId, String fromDateStr, String toDateStr) {
     List<UserDto> userDtos = userService.findUsersByIds(List.of(loginUserId, sellerId));
     UserDto loginUserDto =
@@ -166,9 +167,7 @@ public class SellerReportService extends AbstractService {
     }
 
     sellerDto.setPassword(null);
-    return FastMap.create()
-        .add("seller", sellerDto)
-        .add("details", reportPerformanceBySellerDetail(sellerDto, fromDateStr, toDateStr));
+    return reportPerformanceBySellerDetail(sellerDto, fromDateStr, toDateStr);
   }
 
   private List<PerformanceBySellerDetail> reportPerformanceBySellerDetail(
