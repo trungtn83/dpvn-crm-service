@@ -166,7 +166,29 @@ public class SellerReportService extends AbstractService {
     }
 
     sellerDto.setPassword(null);
-    return reportPerformanceBySellerDetail(sellerDto, fromDateStr, toDateStr);
+    List<PerformanceBySellerDetail> performances =
+        reportPerformanceBySellerDetail(sellerDto, fromDateStr, toDateStr);
+    if (!userService.isGod(loginUserDto) && !sellerDto.getId().equals(loginUserDto.getId())) {
+      performances.forEach(
+          performance -> {
+            performance
+                .getCustomers()
+                .forEach(
+                    c -> c.setMobilePhone(PhoneNumberUtil.maskPhoneNumber(c.getMobilePhone())));
+            performance
+                .getInteractions()
+                .forEach(
+                    i -> i.setMobilePhone(PhoneNumberUtil.maskPhoneNumber(i.getMobilePhone())));
+            performance
+                .getCallLogs()
+                .forEach(
+                    c -> {
+                      c.setCaller(PhoneNumberUtil.maskPhoneNumber(c.getCaller()));
+                      c.setCallee(PhoneNumberUtil.maskPhoneNumber(c.getCallee()));
+                    });
+          });
+    }
+    return performances;
   }
 
   private List<PerformanceBySellerDetail> reportPerformanceBySellerDetail(
