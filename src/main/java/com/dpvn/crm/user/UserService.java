@@ -4,12 +4,13 @@ import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crm.client.ReportCrudClient;
 import com.dpvn.crmcrudservice.domain.constant.Users;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
+import com.dpvn.crmcrudservice.domain.dto.UserPropertyDto;
 import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.util.FastMap;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -54,41 +55,41 @@ public class UserService {
   }
 
   public void createNewUser(UserDto userDto) {
-    UserDto dbUserDto = crmCrudClient.createNewUser(userDto);
-    updateMember(dbUserDto, userDto.getMemberIds());
+    crmCrudClient.createNewUser(userDto);
   }
 
   public void updateUser(Long id, FastMap userDto) {
-    UserDto dbUserDto = crmCrudClient.updateExistedUser(id, userDto);
-    updateMember(dbUserDto, userDto.getListClass("memberIds", Long.class));
-  }
+    List<UserPropertyDto> userPropertyDtos =
+        userDto.getListClass("properties", UserPropertyDto.class);
+    List<UserPropertyDto> discipleUserPropertyDto =
+        userDto.getListClass("memberIds", Long.class).stream()
+            .map(
+                discipleId -> {
+                  UserPropertyDto dto = new UserPropertyDto();
+                  dto.setCode("MEMBER");
+                  dto.setStatus("DISCIPLE");
+                  dto.setValue(discipleId.toString());
+                  return dto;
+                })
+            .toList();
+    List<UserPropertyDto> judasUserPropertyDtos =
+        userDto.getListClass("transferIds", Long.class).stream()
+            .map(
+                judasId -> {
+                  UserPropertyDto dto = new UserPropertyDto();
+                  dto.setCode("MEMBER");
+                  dto.setStatus("JUDAS");
+                  dto.setValue(judasId.toString());
+                  return dto;
+                })
+            .toList();
 
-  private void updateMember(UserDto dbUserDto, List<Long> memberIds) {
-    List<Long> dbMemberIds = dbUserDto.getMembers().stream().map(UserDto::getId).toList();
-    memberIds.forEach(
-        memberId -> {
-          if (!dbMemberIds.contains(memberId)) {
-            crmCrudClient.updateMember(
-                FastMap.create()
-                    .add("leaderId", dbUserDto.getId())
-                    .add("memberId", memberId)
-                    .add("action", Users.Action.ADD));
-          }
-        });
-    dbMemberIds.forEach(
-        dbMemberId -> {
-          if (!memberIds.contains(dbMemberId)) {
-            crmCrudClient.updateMember(
-                FastMap.create()
-                    .add("leaderId", dbUserDto.getId())
-                    .add("memberId", dbMemberId)
-                    .add("action", Users.Action.REMOVE));
-          }
-        });
-  }
-
-  public void deleteUser(Long id) {
-    crmCrudClient.deleteUser(id);
+    List<UserPropertyDto> properties =
+        Stream.of(userPropertyDtos, discipleUserPropertyDto, judasUserPropertyDtos)
+            .flatMap(List::stream)
+            .toList();
+    userDto.add("properties", properties);
+    crmCrudClient.updateExistedUser(id, userDto);
   }
 
   public boolean isGod(Long userId) {
@@ -100,26 +101,22 @@ public class UserService {
     return UserUtil.isGod(user);
   }
 
-  public List<UserDto> getUserMembers(UserDto userDto) {
-    List<UserDto> userDtos =
-        new ArrayList<>(
-            userDto.getMembers()); // clone new one to avoid change loginUserDto.members() list
-    if (!isGod(userDto)) {
-      userDtos.add(0, userDto);
-    } else {
-      userDtos.clear();
-      List<UserDto> response = listAllUsers().getRows();
-      userDtos.addAll(
-          response.stream()
-              .filter(
-                  u ->
-                      u.getActive()
-                          && (u.getDepartment() != null
-                              && u.getDepartment()
-                                  .getDepartmentName()
-                                  .equals(Users.Department.SALE)))
-              .toList());
+  public List<UserDto> getSaleUsersUnder(UserDto userDto) {
+    if (isGod(userDto)) {
+      return getSaleUsers();
     }
+    List<UserDto> userDtos = findUsersByIds(userDto.getDiscipleMemberIds());
+    userDtos.add(userDto);
     return userDtos;
+  }
+
+  public List<UserDto> getSaleUsers() {
+    return listAllUsers().getRows().stream()
+        .filter(
+            u ->
+                u.getActive()
+                    && (u.getDepartment() != null
+                        && u.getDepartment().getDepartmentName().equals(Users.Department.SALE)))
+        .toList();
   }
 }

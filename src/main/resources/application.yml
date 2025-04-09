@@ -2,8 +2,6 @@ server:
   port: 8091
 
 spring:
-  config:
-    import: "classpath:/application-shared.yml"
   application:
     name: crm-service
   codec:

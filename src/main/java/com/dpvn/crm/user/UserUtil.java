@@ -41,7 +41,7 @@ public class UserUtil {
   public static boolean isReportable(UserDto loginUserDto, UserDto sellerDto) {
     return isGod(loginUserDto)
         || loginUserDto.getId().equals(sellerDto.getId())
-        || loginUserDto.getMembers().stream().anyMatch(u -> u.getId().equals(sellerDto.getId()));
+        || loginUserDto.getDiscipleMemberIds().stream().anyMatch(u -> u.equals(sellerDto.getId()));
   }
 
   public static String getVoip24hCodeForBySeller(UserDto sellerDto) {

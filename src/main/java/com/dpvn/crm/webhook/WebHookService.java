@@ -1,5 +1,6 @@
 package com.dpvn.crm.webhook;
 
+import com.dpvn.crm.campaign.DispatchService;
 import com.dpvn.crm.client.KiotvietServiceClient;
 import com.dpvn.crm.client.ReportCrudClient;
 import com.dpvn.crm.client.WmsCrudClient;
@@ -7,10 +8,14 @@ import com.dpvn.crm.customer.CustomerService;
 import com.dpvn.crm.customer.dto.InvoiceHookDto;
 import com.dpvn.crm.customer.dto.OrderHookDto;
 import com.dpvn.crm.customer.dto.PayloadDto;
+import com.dpvn.crm.helper.ConfigurationService;
 import com.dpvn.crm.user.UserService;
 import com.dpvn.crm.voip24h.domain.ViCallLogDto;
+import com.dpvn.crmcrudservice.domain.constant.Customers;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
+import com.dpvn.kiotviet.domain.KvAddressBookDto;
+import com.dpvn.kiotviet.domain.KvCustomerDto;
 import com.dpvn.reportcrudservice.domain.constant.KvStatus;
 import com.dpvn.shared.domain.constant.Globals;
 import com.dpvn.shared.exception.BadRequestException;
@@ -18,6 +23,7 @@ import com.dpvn.shared.service.AbstractService;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.ListUtil;
 import com.dpvn.shared.util.ObjectUtil;
+import com.dpvn.shared.util.SystemUtil;
 import com.dpvn.webhookhandler.domain.Topics;
 import com.dpvn.wmscrudservice.domain.dto.InvoiceDto;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -36,6 +42,8 @@ public class WebHookService extends AbstractService {
   private final KiotvietServiceClient kiotvietServiceClient;
   private final WmsCrudClient wmsCrudClient;
   private final ReportCrudClient reportCrudClient;
+  private final DispatchService dispatchService;
+  private final ConfigurationService configurationService;
 
   public WebHookService(
       UserService userService,
@@ -43,13 +51,17 @@ public class WebHookService extends AbstractService {
       WebHookHandlerService webHookHandlerService,
       KiotvietServiceClient kiotvietServiceClient,
       WmsCrudClient wmsCrudClient,
-      ReportCrudClient reportCrudClient) {
+      ReportCrudClient reportCrudClient,
+      DispatchService dispatchService,
+      ConfigurationService configurationService) {
     this.userService = userService;
     this.customerService = customerService;
     this.webHookHandlerService = webHookHandlerService;
     this.kiotvietServiceClient = kiotvietServiceClient;
     this.wmsCrudClient = wmsCrudClient;
     this.reportCrudClient = reportCrudClient;
+    this.dispatchService = dispatchService;
+    this.configurationService = configurationService;
   }
 
   @KafkaListener(topics = Topics.KV_UPDATE_ORDER, groupId = "crm-group")
@@ -106,6 +118,108 @@ public class WebHookService extends AbstractService {
     LOGGER.info("Received {} payload: {}", "CALLLOG", value);
     ViCallLogDto viCallLogDto = ObjectUtil.readValue(value, ViCallLogDto.class);
     reportCrudClient.syncAllCallLogs(List.of(viCallLogDto));
+  }
+
+  @KafkaListener(topics = Topics.WEBSITE_CREATE_ORDER, groupId = "website-group")
+  public void handleWebsiteCreateOrderMessage(ConsumerRecord<String, String> message) {
+    String value = message.value();
+    LOGGER.info("Received {} payload: {}", "WEBSITE duocphamvietnhat", value);
+    FastMap order = ObjectUtil.readValue(value, FastMap.class);
+
+    processWebsiteCreateOrder(order.getMap("data"));
+  }
+
+  private void processWebsiteCreateOrder(FastMap rawOrder) {
+    String mobilePhone = rawOrder.getString("phone_number");
+    FastMap rawCustomer = rawOrder.getMap("customer");
+    FastMap rawCustomerAddress = rawOrder.getMap("customer_address");
+
+    FastMap customerStatus = customerService.getCustomerByMobilePhoneStatus(mobilePhone);
+    CustomerDto customerDto =
+        customerStatus.containsKey("customer")
+            ? customerStatus.getClass("customer", CustomerDto.class)
+            : createNewCustomerFromWeb(rawCustomer, rawCustomerAddress);
+
+    KvAddressBookDto kvAddressBookDto =
+        tranformToKvAddressBookDto(customerDto.getIdf(), rawCustomerAddress);
+    KvAddressBookDto addressDto =
+        kiotvietServiceClient.createCustomerAddressFromWebsite(kvAddressBookDto);
+
+    List<Long> ownerIds = customerStatus.getMap("owner").getListClass("ownerId", Long.class);
+    boolean isMine =
+        List.of(Customers.Owner.TREASURE, Customers.Owner.GOLD)
+            .contains(customerStatus.getMap("owner").getString("ownerName"));
+    UserDto sale = dispatchService.getNextSale(customerDto.getId(), ownerIds);
+    if (!isMine) {
+      configurationService.upsertConfigDispatchRoundRobin(sale.getId());
+    }
+
+    // call to kiotviet to create new order with saleId
+    FastMap customer =
+        FastMap.create()
+            .add("id", customerDto.getIdf())
+            .add("name", addressDto.getReceiver())
+            .add("address", addressDto.getAddress())
+            .add("phone", addressDto.getContactNumber())
+            .add("location", addressDto.getLocationName())
+            .add("ward", addressDto.getWardName());
+    String orderCode = rawOrder.getString("order_code");
+    List<FastMap> items = rawOrder.getListClass("line_items_at_time", FastMap.class);
+    FastMap order =
+        FastMap.create()
+            .add("code", orderCode)
+            .add("saleId", sale.getIdf())
+            .add(
+                "details",
+                items.stream()
+                    .map(
+                        item ->
+                            FastMap.create()
+                                .add("code", item.getString("sku"))
+                                .add("quantity", item.getInt("quantity"))
+                                .add("price", item.getLong("item_price")))
+                    .toList());
+    kiotvietServiceClient.createOrderFromWebsite(
+        FastMap.create().add("customer", customer).add("order", order));
+  }
+
+  private CustomerDto createNewCustomerFromWeb(FastMap rawCustomer, FastMap rawAddressBook) {
+    // call to kiotviet to create new one
+    KvCustomerDto kvCustomerDto = tranformToKvCustomerDto(rawCustomer, rawAddressBook);
+    KvCustomerDto savedKvcustomerDto =
+        kiotvietServiceClient.createCustomerFromWebsite(kvCustomerDto);
+    SystemUtil.sleep(5); // wait for sync customer from kiotviet to crm (event by webhook)
+    return customerService.findCustomerByKvCustomerId(savedKvcustomerDto.getId());
+  }
+
+  private KvCustomerDto tranformToKvCustomerDto(FastMap rawCustomer, FastMap rawAddressBook) {
+    KvCustomerDto kvCustomerDto = new KvCustomerDto();
+    kvCustomerDto.setLocationName(
+        rawAddressBook.getString("province_name")
+            + " - "
+            + rawAddressBook.getString("district_name"));
+    kvCustomerDto.setWardName(rawAddressBook.getString("wards_name"));
+    kvCustomerDto.setName(rawCustomer.getString("name"));
+    kvCustomerDto.setContactNumber(rawCustomer.getString("phone_number"));
+    kvCustomerDto.setGender(rawCustomer.getInt("sex") == 1 ? Boolean.TRUE : Boolean.FALSE);
+    kvCustomerDto.setEmail(rawCustomer.getString("email"));
+    kvCustomerDto.setComments("Khách hàng tạo mới từ website");
+    return kvCustomerDto;
+  }
+
+  private KvAddressBookDto tranformToKvAddressBookDto(Long customerId, FastMap rawAddressBook) {
+    KvAddressBookDto kvAddressBookDto = new KvAddressBookDto();
+    kvAddressBookDto.setCustomerId(customerId);
+    kvAddressBookDto.setName(rawAddressBook.getString("name"));
+    kvAddressBookDto.setReceiver(rawAddressBook.getString("name"));
+    kvAddressBookDto.setAddress(rawAddressBook.getString("address_detail"));
+    kvAddressBookDto.setContactNumber(rawAddressBook.getString("phone"));
+    kvAddressBookDto.setLocationName(
+        rawAddressBook.getString("province_name")
+            + " - "
+            + rawAddressBook.getString("district_name"));
+    kvAddressBookDto.setWardName(rawAddressBook.getString("wards_name"));
+    return kvAddressBookDto;
   }
 
   private void validatePayload(String type, String payload) {

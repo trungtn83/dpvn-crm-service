@@ -21,6 +21,7 @@ import com.dpvn.wmscrudservice.domain.constant.Orders;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -372,10 +373,15 @@ public class CustomerService extends AbstractService {
     mySaleCustomerDto.setCustomerDto(null);
 
     UserDto userDto = userService.findById(saleId);
+    List<Long> transferIds = userDto.getJudasMemberIds();
     Long userId =
         (UserUtil.isDemiGod(userDto) || UserUtil.isAccount(userDto) || UserUtil.isAdmin(userDto))
             ? null
             : saleId;
+    List<Long> saleIds =
+        userId == null
+            ? List.of()
+            : Stream.of(transferIds, List.of(saleId)).flatMap(List::stream).toList();
     return FastMap.create()
         .add("customer", customerDto)
         .add("saleCustomer", mySaleCustomerDto)
@@ -383,7 +389,7 @@ public class CustomerService extends AbstractService {
         .add(
             "isMyCustomer",
             SaleCustomers.Reason.MY_OWN_HANDS.contains(mySaleCustomerDto.getReasonId()))
-        .add("owner", CustomerUtil.getCustomerOwner(userId, customerDto, saleCustomerDtos));
+        .add("owner", CustomerUtil.getCustomerOwner(saleIds, customerDto, saleCustomerDtos));
   }
 
   /**
@@ -600,5 +606,23 @@ public class CustomerService extends AbstractService {
     interactionService.createInteraction(
         InteractionUtil.generateSystemInteraction(
             saleId, customerId, null, "Đào khách hàng từ " + Customers.Owners.get(owner)));
+  }
+
+  /**
+   * Find customer status: return that customer if existed and owner
+   * If onwer does not exist too (means it is in GOLD_MINE or SAND
+   */
+  public FastMap getCustomerByMobilePhoneStatus(String mobilePhone) {
+    List<CustomerDto> customerDtos = crmCrudClient.findCustomersByMobilePhone(mobilePhone);
+    if (ListUtil.isEmpty(customerDtos)) {
+      // phone does not exist in system crm, create new one in kiotviet
+      return FastMap.create().add("owner", FastMap.create());
+    } else {
+      CustomerDto customerDto = customerDtos.get(0);
+      FastMap condition = FastMap.create().add("customerIds", List.of(customerDto.getId()));
+      List<SaleCustomerDto> saleCustomerDtos = crmCrudClient.findSaleCustomersByOptions(condition);
+      FastMap owner = CustomerUtil.getCustomerOwner(customerDto, saleCustomerDtos);
+      return FastMap.create().add("customer", customerDto).add("owner", owner);
+    }
   }
 }

@@ -48,7 +48,7 @@ public interface ReportCrudClient {
   List<ConfigDto> findConfigBy(@RequestBody FastMap body);
 
   @PostMapping("/system/config/upsert-value")
-  void createConfig(@RequestBody ConfigDto configDto);
+  void upsertConfig(@RequestBody ConfigDto configDto);
 
   // REPORT
   @PostMapping("/report/calllog/by-sellers")

@@ -57,16 +57,17 @@ public class CustomerUtil {
   }
 
   public static FastMap getCustomerOwner(
-      Long saleId, CustomerDto customerDto, List<SaleCustomerDto> saleCustomerDtos) {
+      List<Long> saleIds, CustomerDto customerDto, List<SaleCustomerDto> saleCustomerDtos) {
     FastMap owner = getCustomerOwner(customerDto, saleCustomerDtos);
     List<Long> ownerId = owner.getListClass("ownerId", Long.class);
     String ownerName = owner.getString("ownerName");
     boolean isViewable =
-        saleId == null // is god by role or is account by department
+        ListUtil.isEmpty(saleIds) // is god by role or is account by department
             || (List.of(Customers.Owner.SANDBANK, Customers.Owner.GOLDMINE)
                 .contains(ownerName)) // is in bãi cát hoặc mỏ vàng
             || ListUtil.isEmpty(ownerId) // not belong to anyone
-            || ownerId.contains(saleId); // belong to me
+            || ownerId.stream()
+                .anyMatch(saleIds::contains); // belong to me or my transferring member
     return owner.add("isViewable", isViewable);
   }
 }

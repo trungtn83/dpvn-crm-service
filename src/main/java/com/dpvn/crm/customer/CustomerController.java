@@ -4,27 +4,15 @@ import com.dpvn.crm.user.UserService;
 import com.dpvn.crm.user.UserUtil;
 import com.dpvn.crmcrudservice.domain.constant.Customers;
 import com.dpvn.crmcrudservice.domain.constant.SaleCustomers;
-import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
-import com.dpvn.crmcrudservice.domain.dto.CustomerTypeDto;
-import com.dpvn.crmcrudservice.domain.dto.SaleCustomerCategoryDto;
-import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
-import com.dpvn.crmcrudservice.domain.dto.SaleCustomerStateDto;
-import com.dpvn.crmcrudservice.domain.dto.UserDto;
+import com.dpvn.crmcrudservice.domain.dto.*;
 import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.exception.BadRequestException;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.ListUtil;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/customer")
@@ -66,7 +54,7 @@ public class CustomerController {
   /**
    * @param loginUserId
    * @return List:FastMap(customer: CustomerDto, state: SaleCustomerStateDto <- the last state if
-   *     have)
+   * have)
    */
   @PostMapping("/my")
   public FastMap getMyCustomers(
@@ -92,9 +80,16 @@ public class CustomerController {
                     .toList()
                 : sourceIds);
     UserDto userDto = userService.findById(loginUserId);
+    List<Long> saleIds = new ArrayList<>();
+    if (saleId != null) {
+      saleIds.add(saleId);
+    } else if (!UserUtil.isGod(userDto)) {
+      saleIds.add(loginUserId);
+      saleIds.addAll(userDto.getJudasMemberIds());
+    }
     return customerService.findMyCustomers(
         FastMap.create()
-            .add("saleId", !UserUtil.isGod(userDto) ? loginUserId : saleId)
+            .add("saleIds", saleIds)
             .add("customerTypeId", customerTypeId)
             .add("customerCategoryId", customerCategoryId)
             .add("filterText", filterText)
@@ -202,7 +197,7 @@ public class CustomerController {
   }
 
   /**
-   * @param id: customer id
+   * @param id:  customer id
    * @param body (lastTransaction:Instant, isSuccessful:boolean)
    */
   @PostMapping("/{id}/update-last-transaction")
@@ -240,7 +235,7 @@ public class CustomerController {
 
   /**
    * @param body (X) userId: get from header - customerId: Long - action: "STAR", "REQUESTING" -
-   *     flag: boolean -> turn on or off
+   *             flag: boolean -> turn on or off
    */
   @PostMapping("/do-action")
   public void doActionCustomer(
@@ -319,5 +314,16 @@ public class CustomerController {
       @PathVariable Long id,
       @RequestParam(required = false, defaultValue = Customers.Owner.SANDBANK) String owner) {
     customerService.digCustomerFromOceanOrGoldmineToGold(loginUserId, id, owner);
+  }
+
+  /**
+   * @return - customer: null if does not exist in crm system
+   * - owner:
+   * + ownerId: List of saleId related to this customer
+   * + ownerName: TREASURE, GOLD....
+   */
+  @GetMapping("/mobile-phone/{mobilePhone}/status")
+  public FastMap getCustomerByMobilePhoneStatus(@PathVariable String mobilePhone) {
+    return customerService.getCustomerByMobilePhoneStatus(mobilePhone);
   }
 }

@@ -44,7 +44,7 @@ public class SellerReportService extends AbstractService {
 
   public List<FastMap> reportSales(Long loginUserId, String fromDate, String toDate) {
     UserDto loginUserDto = userService.findById(loginUserId);
-    List<UserDto> userDtos = userService.getUserMembers(loginUserDto);
+    List<UserDto> userDtos = userService.getSaleUsersUnder(loginUserDto);
 
     List<Long> sellerIdfs = userDtos.stream().map(UserDto::getIdf).toList();
     Map<Long, List<InvoiceBySeller>> invoicesBySellerMap =
@@ -115,9 +115,7 @@ public class SellerReportService extends AbstractService {
       List<InteractionBySeller> interactionsBySeller,
       List<TaskBySeller> tasksBySeller,
       List<CallLogBySeller> callLogsBySeller) {
-    if (userService.isGod(loginUserDto)
-        || sellerDto.getId().equals(loginUserDto.getId())
-        || loginUserDto.getMembers().stream().anyMatch(u -> u.getId().equals(sellerDto.getId()))) {
+    if (UserUtil.isReportable(loginUserDto, sellerDto)) {
       sellerDto.setPassword(null);
 
       interactionsBySeller.forEach(
