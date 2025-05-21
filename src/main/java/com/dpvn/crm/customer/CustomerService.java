@@ -11,18 +11,33 @@ import com.dpvn.crm.webhook.WebHookHandlerService;
 import com.dpvn.crmcrudservice.domain.constant.Customers;
 import com.dpvn.crmcrudservice.domain.constant.RelationshipType;
 import com.dpvn.crmcrudservice.domain.constant.SaleCustomers;
-import com.dpvn.crmcrudservice.domain.dto.*;
+import com.dpvn.crmcrudservice.domain.dto.CustomerAddressDto;
+import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
+import com.dpvn.crmcrudservice.domain.dto.CustomerReferenceDto;
+import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
+import com.dpvn.crmcrudservice.domain.dto.SaleCustomerStateDto;
+import com.dpvn.crmcrudservice.domain.dto.UserDto;
 import com.dpvn.shared.domain.constant.Globals;
 import com.dpvn.shared.exception.BadRequestException;
 import com.dpvn.shared.service.AbstractService;
-import com.dpvn.shared.util.*;
+import com.dpvn.shared.util.DateUtil;
+import com.dpvn.shared.util.FastMap;
+import com.dpvn.shared.util.ListUtil;
+import com.dpvn.shared.util.ObjectUtil;
+import com.dpvn.shared.util.StringUtil;
 import com.dpvn.wmscrudservice.domain.constant.Invoices;
 import com.dpvn.wmscrudservice.domain.constant.Orders;
+import org.springframework.stereotype.Service;
+
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.springframework.stereotype.Service;
 
 @Service
 public class CustomerService extends AbstractService {
@@ -190,8 +205,8 @@ public class CustomerService extends AbstractService {
           customerDto.getId() == null
               ? crmCrudClient.createNewCustomer(customerDto)
               : crmCrudClient.updateExistedCustomer(
-                  customerDto.getId(),
-                  FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
+              customerDto.getId(),
+              FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
       // auto generate code when user leave it empty
       if (StringUtil.isEmpty(result.getCustomerCode())) {
         result =
@@ -268,8 +283,8 @@ public class CustomerService extends AbstractService {
             customerId == null
                 ? SaleCustomers.Reason.BY_MY_HAND
                 : (isActive
-                    ? SaleCustomers.Reason.BY_MY_HAND_FROM_GOLDMINE
-                    : SaleCustomers.Reason.BY_MY_HAND_FROM_SANDBANK);
+                ? SaleCustomers.Reason.BY_MY_HAND_FROM_GOLDMINE
+                : SaleCustomers.Reason.BY_MY_HAND_FROM_SANDBANK);
         saleCustomerDto.setReasonId(reasonId);
         saleCustomerDto.setReasonRef(userId.toString());
         saleCustomerDto.setReasonNote("Tạo khách hàng từ màn hình tạo mới");
@@ -471,7 +486,6 @@ public class CustomerService extends AbstractService {
 
   public CustomerDto findCustomerByKvCustomerId(Long kvCustomerId) {
     // TODO: sometimes customer update event did not send first, we receive update order, invoice
-    // first, so, force to sync customer
     CustomerDto customerDto = crmCrudClient.findCustomerByIdf(kvCustomerId);
     if (customerDto == null) {
       kiotvietServiceClient.syncCustomer(kvCustomerId);

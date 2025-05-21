@@ -16,23 +16,28 @@ import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
 import com.dpvn.kiotviet.domain.KvAddressBookDto;
 import com.dpvn.kiotviet.domain.KvCustomerDto;
+import com.dpvn.kiotviet.domain.KvInvoiceDto;
+import com.dpvn.kiotviet.domain.KvOrderDto;
+import com.dpvn.kiotviet.domain.constant.KvOrders;
 import com.dpvn.reportcrudservice.domain.constant.KvStatus;
-import com.dpvn.shared.domain.constant.Globals;
+import com.dpvn.shared.config.CacheService;
 import com.dpvn.shared.exception.BadRequestException;
 import com.dpvn.shared.service.AbstractService;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.ListUtil;
 import com.dpvn.shared.util.ObjectUtil;
+import com.dpvn.shared.util.StringUtil;
 import com.dpvn.shared.util.SystemUtil;
 import com.dpvn.webhookhandler.domain.Topics;
-import com.dpvn.wmscrudservice.domain.dto.InvoiceDto;
 import com.fasterxml.jackson.core.type.TypeReference;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.stereotype.Service;
 
 @Service
 public class WebHookService extends AbstractService {
@@ -44,6 +49,7 @@ public class WebHookService extends AbstractService {
   private final ReportCrudClient reportCrudClient;
   private final DispatchService dispatchService;
   private final ConfigurationService configurationService;
+  private final CacheService cacheService;
 
   public WebHookService(
       UserService userService,
@@ -53,7 +59,8 @@ public class WebHookService extends AbstractService {
       WmsCrudClient wmsCrudClient,
       ReportCrudClient reportCrudClient,
       DispatchService dispatchService,
-      ConfigurationService configurationService) {
+      ConfigurationService configurationService,
+      CacheService cacheService) {
     this.userService = userService;
     this.customerService = customerService;
     this.webHookHandlerService = webHookHandlerService;
@@ -62,6 +69,7 @@ public class WebHookService extends AbstractService {
     this.reportCrudClient = reportCrudClient;
     this.dispatchService = dispatchService;
     this.configurationService = configurationService;
+    this.cacheService = cacheService;
   }
 
   @KafkaListener(topics = Topics.KV_UPDATE_ORDER, groupId = "crm-group")
@@ -100,7 +108,8 @@ public class WebHookService extends AbstractService {
     // TODO: sync one customer by call back to kiotviet
     // data from hook does not have enough information to sync customer (wardname, extra phones...)
     // fuk kiotviet webhook here
-    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(value, new TypeReference<>() {});
+    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(value, new TypeReference<>() {
+    });
     payloadDto
         .getNotifications()
         .forEach(
@@ -223,11 +232,12 @@ public class WebHookService extends AbstractService {
   }
 
   private void validatePayload(String type, String payload) {
-    PayloadDto<?> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {});
+    PayloadDto<?> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {
+    });
     if (payloadDto.getId() == null
         || ListUtil.isEmpty(payloadDto.getNotifications())
         || payloadDto.getNotifications().stream()
-            .anyMatch(notification -> ListUtil.isEmpty(notification.getData()))) {
+        .anyMatch(notification -> ListUtil.isEmpty(notification.getData()))) {
       LOGGER.error("Received {} payload in mal-format", type);
 
       throw new BadRequestException("Invalid payload");
@@ -236,7 +246,8 @@ public class WebHookService extends AbstractService {
 
   public void processOrder(String payload) {
     LOGGER.info("Received {} payload: {}", "ORDER", payload);
-    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {});
+    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {
+    });
     validatePayload("ORDER", payload);
     payloadDto
         .getNotifications()
@@ -268,7 +279,9 @@ public class WebHookService extends AbstractService {
 
   private void processOrderHookDto(OrderHookDto orderHookDto) {
     Long id = orderHookDto.getId();
-    String code = orderHookDto.getCode();
+    Long branchId = orderHookDto.getBranchId();
+    String orderCode = orderHookDto.getCode();
+    String code = String.format("%d-%s", branchId, orderCode);
     Instant purchasedDate = orderHookDto.getPurchaseDate();
     Integer status = orderHookDto.getStatus();
     // find user by kiotviet user id, link by idf
@@ -277,22 +290,26 @@ public class WebHookService extends AbstractService {
     // find customer by kiotviet customer id, link by idf
     CustomerDto customer = customerService.findCustomerByKvCustomerId(orderHookDto.getCustomerId());
 
-    if (Objects.equals(status, KvStatus.Order.TEMP.getId())) {
-      webHookHandlerService.handleTempOrder(sale, customer, code, purchasedDate);
-      LOGGER.info("Processed update for TEMP order {}", orderHookDto.getCode());
-    } else if (Objects.equals(status, KvStatus.Order.CONFIRMED.getId())) {
-      webHookHandlerService.handleConfirmedOrder(sale, customer, code, purchasedDate);
-      LOGGER.info("Processed update for CONFIRMED order {}", orderHookDto.getCode());
-    } else if (Objects.equals(status, KvStatus.Order.CANCELLED.getId())) {
-      webHookHandlerService.handleCancelledOrder(sale, customer, code);
-      LOGGER.info("Processed update for DELETED order {}", orderHookDto.getCode());
-    } else {
-      LOGGER.info("Processed update for NO NEED ANY ACTION order {}", orderHookDto.getCode());
+    // sometimes, customer is THUOCSI, BUYMED... no need to cover this case
+    if (customer != null) {
+      if (Objects.equals(status, KvStatus.Order.TEMP.getId())) {
+        webHookHandlerService.handleTempOrder(sale, customer, code, purchasedDate);
+        LOGGER.info("Processed update for TEMP order {}", orderHookDto.getCode());
+      } else if (Objects.equals(status, KvStatus.Order.CONFIRMED.getId())) {
+        webHookHandlerService.handleConfirmedOrder(sale, customer, code, purchasedDate);
+        LOGGER.info("Processed update for CONFIRMED order {}", orderHookDto.getCode());
+      } else if (Objects.equals(status, KvStatus.Order.CANCELLED.getId())) {
+        webHookHandlerService.handleCancelledOrder(sale, customer, code);
+        LOGGER.info("Processed update for DELETED order {}", orderHookDto.getCode());
+      } else {
+        LOGGER.info("Processed update for NO NEED ANY ACTION order {}", orderHookDto.getCode());
+      }
     }
   }
 
   public void processInvoice(String payload) {
-    PayloadDto<InvoiceHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {});
+    PayloadDto<InvoiceHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {
+    });
     validatePayload("invoice", payload);
     payloadDto
         .getNotifications()
@@ -324,37 +341,11 @@ public class WebHookService extends AbstractService {
                         }));
   }
 
-  public FastMap reprocessInvoice(String invoiceCode) {
-    kiotvietServiceClient.syncInvoice(invoiceCode);
-
-    FastMap params =
-        FastMap.create()
-            .add("code", invoiceCode)
-            .add("page", 0)
-            .add("pageSize", Globals.Paging.FETCHING_PAGE_SIZE);
-    List<InvoiceDto> invoiceDtos = wmsCrudClient.findInvoicesByOptions(params).getRows();
-    if (ListUtil.isEmpty(invoiceDtos)) {
-      return FastMap.create().add("error", String.format("Hoá đơn %s không tồn tại.", invoiceCode));
-    }
-    InvoiceDto invoiceDto = invoiceDtos.get(0);
-    processInvoiceHookDto(tranformInvoiceDtoToInvoiceHookDto(invoiceDto));
-    return FastMap.create();
-  }
-
-  private InvoiceHookDto tranformInvoiceDtoToInvoiceHookDto(InvoiceDto invoiceDto) {
-    InvoiceHookDto invoiceHookDto = new InvoiceHookDto();
-    invoiceHookDto.setId(invoiceDto.getId());
-    invoiceHookDto.setCode(invoiceDto.getCode());
-    invoiceHookDto.setPurchaseDate(invoiceDto.getPurchaseDate());
-    invoiceHookDto.setStatus(Integer.valueOf(invoiceDto.getStatus()));
-    invoiceHookDto.setSoldById(invoiceDto.getSellerId());
-    invoiceHookDto.setCustomerId(invoiceDto.getCustomerId());
-    return invoiceHookDto;
-  }
-
   private void processInvoiceHookDto(InvoiceHookDto invoiceHookDto) {
     Long id = invoiceHookDto.getId();
-    String code = invoiceHookDto.getCode();
+    Long branchId = invoiceHookDto.getBranchId();
+    String invoiceCode = invoiceHookDto.getCode();
+    String code = String.format("%d-%s", branchId, invoiceCode);
     Instant purchasedDate = invoiceHookDto.getPurchaseDate();
     Integer status = invoiceHookDto.getStatus();
     Integer deliveryStatus =
@@ -365,26 +356,103 @@ public class WebHookService extends AbstractService {
     CustomerDto customer =
         customerService.findCustomerByKvCustomerId(invoiceHookDto.getCustomerId());
 
-    LOGGER.info(
-        "Process inside invoice {} with content: {}",
-        invoiceHookDto.getCode(),
-        ObjectUtil.writeValueAsString(invoiceHookDto));
-    if (Objects.equals(status, KvStatus.Invoice.DELIVERING.getId())
-        && Objects.equals(deliveryStatus, KvStatus.DeliveryStatus.WAIT_PROCESS.getId())) {
-      webHookHandlerService.handleInProgressInvoice(sale, customer, code, purchasedDate);
-      LOGGER.info("Processed update for IN-PROGRESS invoice {}", invoiceHookDto.getCode());
-    } else if (Objects.equals(status, KvStatus.Invoice.DELIVERING.getId())
-        && Objects.equals(deliveryStatus, KvStatus.DeliveryStatus.DELIVERED.getId())) {
-      webHookHandlerService.handleCompletedInvoice(sale, customer, code, purchasedDate);
-      LOGGER.info("Processed update for COMPLETED invoice {}", invoiceHookDto.getCode());
-    } else if (Objects.equals(status, KvStatus.Invoice.CANCELLED.getId())
-        && Objects.equals(deliveryStatus, KvStatus.DeliveryStatus.CANCELLED.getId())) {
-      webHookHandlerService.handleCancelledInvoice(sale, customer, code);
-      LOGGER.info("Processed update for CANCELLED invoice {}", invoiceHookDto.getCode());
-    } else if (Objects.equals(status, KvStatus.Invoice.COMPLETED.getId())
-        || Objects.equals(deliveryStatus, KvStatus.DeliveryStatus.DELIVERED.getId())) {
-      webHookHandlerService.handleCompletedInvoice(sale, customer, code, purchasedDate);
-      LOGGER.info("Processed update for NO NEED ANY ACTION invoice {}", invoiceHookDto.getCode());
+    // sometimes, customer is THUOCSI, BUYMED... no need to cover this case
+    if (customer != null) {
+      LOGGER.info(
+          "Process inside invoice {} with content: {}",
+          invoiceHookDto.getCode(),
+          ObjectUtil.writeValueAsString(invoiceHookDto));
+      if (Objects.equals(status, KvStatus.Invoice.DELIVERING.getId())
+          && Objects.equals(deliveryStatus, KvStatus.DeliveryStatus.WAIT_PROCESS.getId())) {
+        webHookHandlerService.handleInProgressInvoice(sale, customer, code, purchasedDate);
+        LOGGER.info("Processed update for IN-PROGRESS invoice {}", invoiceHookDto.getCode());
+      } else if (Objects.equals(status, KvStatus.Invoice.DELIVERING.getId())
+          && Objects.equals(deliveryStatus, KvStatus.DeliveryStatus.DELIVERED.getId())) {
+        webHookHandlerService.handleCompletedInvoice(sale, customer, code, purchasedDate);
+        LOGGER.info("Processed update for COMPLETED invoice {}", invoiceHookDto.getCode());
+      } else if (Objects.equals(status, KvStatus.Invoice.CANCELLED.getId())
+          && Objects.equals(deliveryStatus, KvStatus.DeliveryStatus.CANCELLED.getId())) {
+        webHookHandlerService.handleCancelledInvoice(sale, customer, code);
+        LOGGER.info("Processed update for CANCELLED invoice {}", invoiceHookDto.getCode());
+      } else if (Objects.equals(status, KvStatus.Invoice.COMPLETED.getId())
+          || Objects.equals(deliveryStatus, KvStatus.DeliveryStatus.DELIVERED.getId())) {
+        webHookHandlerService.handleCompletedInvoice(sale, customer, code, purchasedDate);
+        LOGGER.info("Processed update for NO NEED ANY ACTION invoice {}", invoiceHookDto.getCode());
+      }
     }
+  }
+
+  @Scheduled(cron = "0 30 7,10,12,15,23 * * *", zone = "Asia/Ho_Chi_Minh")
+  public void manualSync(Integer limit) {
+//    cacheService.preventTooManyRequest("manualSync", 30);
+    List<KvOrderDto> manualSyncOrders = kiotvietServiceClient.findAllManualSync(limit);
+    if (ListUtil.isNotEmpty(manualSyncOrders)) {
+      List<String> orderCodes =
+          manualSyncOrders.stream()
+              .filter(o -> o.getStatus().equals(KvOrders.CONFIRMED))
+              .map(KvOrderDto::getCode)
+              .toList();
+      List<String> invoiceCodes =
+          manualSyncOrders.stream()
+              .filter(o -> o.getStatus().equals(KvOrders.COMPLETED))
+              .map(KvOrderDto::getInvoiceCodes)
+              .toList();
+
+      Long branchId = manualSyncOrders.get(0).getBranchId();
+      syncOrdersIfNeed(branchId, orderCodes);
+      syncInvoicesIfNeed(branchId, invoiceCodes);
+    }
+  }
+
+  private void syncOrdersIfNeed(Long branchId, List<String> orderCodes) {
+    List<String> needToSyncOrderCodes =
+        wmsCrudClient.findNotExistedOrderFromList(branchId, orderCodes);
+    needToSyncOrderCodes.forEach(
+        orderCode -> {
+          KvOrderDto kvOrderDto = kiotvietServiceClient.syncOrder(orderCode);
+          OrderHookDto orderHookDto = transformKvrderDtoToOrderHookDto(kvOrderDto);
+          processOrderHookDto(orderHookDto);
+        });
+  }
+
+  // public to support manual sync one invoice by leader
+  public void syncInvoicesIfNeed(Long branchId, List<String> invoiceCodesFull) {
+    List<String> invoiceCodes = invoiceCodesFull.stream().map(this::getLastAndValidInvoiceCode).toList();
+    List<String> needToSyncInvoiceCodes =
+        wmsCrudClient.findNotExistedInvoiceFromList(branchId, invoiceCodes);
+    needToSyncInvoiceCodes.forEach(
+        invoiceCode -> {
+          KvInvoiceDto kvInvoiceDto = kiotvietServiceClient.syncInvoice(invoiceCode);
+          InvoiceHookDto invoiceHookDto = transformKvInvoiceDtoToInvoiceHookDto(kvInvoiceDto);
+          processInvoiceHookDto(invoiceHookDto);
+        });
+  }
+
+  private String getLastAndValidInvoiceCode(String invoiceCodes) {
+    List<String> invoiceCodesList = StringUtil.split(invoiceCodes, ",");
+    return invoiceCodesList.get(invoiceCodesList.size() - 1).trim();
+  }
+
+  private OrderHookDto transformKvrderDtoToOrderHookDto(KvOrderDto kvOrderDto) {
+    OrderHookDto orderHookDto = new OrderHookDto();
+    orderHookDto.setBranchId(kvOrderDto.getBranchId());
+    orderHookDto.setCode(kvOrderDto.getCode());
+    orderHookDto.setPurchaseDate(kvOrderDto.getPurchaseDate());
+    orderHookDto.setStatus(Integer.valueOf(kvOrderDto.getStatus()));
+    orderHookDto.setSoldById(kvOrderDto.getSoldById());
+    orderHookDto.setCustomerId(kvOrderDto.getCustomerId());
+    return orderHookDto;
+  }
+
+  private InvoiceHookDto transformKvInvoiceDtoToInvoiceHookDto(KvInvoiceDto kvInvoiceDto) {
+    InvoiceHookDto invoiceHookDto = new InvoiceHookDto();
+    invoiceHookDto.setBranchId(kvInvoiceDto.getBranchId());
+    invoiceHookDto.setId(kvInvoiceDto.getId());
+    invoiceHookDto.setCode(kvInvoiceDto.getCode());
+    invoiceHookDto.setPurchaseDate(kvInvoiceDto.getPurchaseDate());
+    invoiceHookDto.setStatus(Integer.valueOf(kvInvoiceDto.getStatus()));
+    invoiceHookDto.setSoldById(kvInvoiceDto.getSoldById());
+    invoiceHookDto.setCustomerId(kvInvoiceDto.getCustomerId());
+    return invoiceHookDto;
   }
 }

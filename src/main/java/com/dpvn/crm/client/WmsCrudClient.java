@@ -10,6 +10,7 @@ import java.util.Map;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 @FeignClient(name = "wms-crud-service", contextId = "wms-crud-service-client")
 public interface WmsCrudClient {
@@ -61,4 +62,12 @@ public interface WmsCrudClient {
 
   @PostMapping("/invoice/sync-all")
   void syncAllInvoices(@RequestBody List<InvoiceDto> invoiceDtos);
+
+  @PostMapping("/invoice/find-not-existed-from-list")
+  List<String> findNotExistedInvoiceFromList(
+      @RequestHeader Long branchId, @RequestBody List<String> orderCodes);
+
+  @PostMapping("/order/find-not-existed-from-list")
+  List<String> findNotExistedOrderFromList(
+      @RequestHeader Long branchId, @RequestBody List<String> orderCodes);
 }
