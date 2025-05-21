@@ -382,7 +382,7 @@ public class WebHookService extends AbstractService {
     }
   }
 
-  @Scheduled(cron = "0 30 7,10,12,15,23 * * *", zone = "Asia/Ho_Chi_Minh")
+  @Scheduled(cron = "0 30 7,10,12,15,18 * * *", zone = "Asia/Ho_Chi_Minh")
   public void manualSync(Integer limit) {
 //    cacheService.preventTooManyRequest("manualSync", 30);
     List<KvOrderDto> manualSyncOrders = kiotvietServiceClient.findAllManualSync(limit);
