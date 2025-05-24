@@ -5,13 +5,13 @@ import com.dpvn.kiotviet.domain.KvCustomerDto;
 import com.dpvn.kiotviet.domain.KvInvoiceDto;
 import com.dpvn.kiotviet.domain.KvOrderDto;
 import com.dpvn.shared.util.FastMap;
+import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-
-import java.util.List;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @FeignClient(name = "kiotviet-service", contextId = "kiotviet-service-client")
 public interface KiotvietServiceClient {
@@ -28,7 +28,7 @@ public interface KiotvietServiceClient {
   KvOrderDto createOrderFromWebsite(@RequestBody FastMap order);
 
   @GetMapping("/web/order/find-all-manual-sync")
-  List<KvOrderDto> findAllManualSync(Integer limit);
+  List<KvOrderDto> findAllManualSync(@RequestParam Integer limit);
 
   @PostMapping("/wcms/customer/sync/{kvCustomerId}")
   void syncCustomer(@PathVariable Long kvCustomerId);

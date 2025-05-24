@@ -30,14 +30,13 @@ import com.dpvn.shared.util.StringUtil;
 import com.dpvn.shared.util.SystemUtil;
 import com.dpvn.webhookhandler.domain.Topics;
 import com.fasterxml.jackson.core.type.TypeReference;
+import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.Objects;
 
 @Service
 public class WebHookService extends AbstractService {
@@ -108,8 +107,7 @@ public class WebHookService extends AbstractService {
     // TODO: sync one customer by call back to kiotviet
     // data from hook does not have enough information to sync customer (wardname, extra phones...)
     // fuk kiotviet webhook here
-    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(value, new TypeReference<>() {
-    });
+    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(value, new TypeReference<>() {});
     payloadDto
         .getNotifications()
         .forEach(
@@ -232,12 +230,11 @@ public class WebHookService extends AbstractService {
   }
 
   private void validatePayload(String type, String payload) {
-    PayloadDto<?> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {
-    });
+    PayloadDto<?> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {});
     if (payloadDto.getId() == null
         || ListUtil.isEmpty(payloadDto.getNotifications())
         || payloadDto.getNotifications().stream()
-        .anyMatch(notification -> ListUtil.isEmpty(notification.getData()))) {
+            .anyMatch(notification -> ListUtil.isEmpty(notification.getData()))) {
       LOGGER.error("Received {} payload in mal-format", type);
 
       throw new BadRequestException("Invalid payload");
@@ -246,8 +243,7 @@ public class WebHookService extends AbstractService {
 
   public void processOrder(String payload) {
     LOGGER.info("Received {} payload: {}", "ORDER", payload);
-    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {
-    });
+    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {});
     validatePayload("ORDER", payload);
     payloadDto
         .getNotifications()
@@ -308,8 +304,7 @@ public class WebHookService extends AbstractService {
   }
 
   public void processInvoice(String payload) {
-    PayloadDto<InvoiceHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {
-    });
+    PayloadDto<InvoiceHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {});
     validatePayload("invoice", payload);
     payloadDto
         .getNotifications()
@@ -382,9 +377,16 @@ public class WebHookService extends AbstractService {
     }
   }
 
+  /*
+  In the kiotviet, tranngocm start at : 19/04/2025 15:50 (based on ORDER)
+   */
   @Scheduled(cron = "0 30 7,10,12,15,18 * * *", zone = "Asia/Ho_Chi_Minh")
+  public void manualSync() {
+    manualSync(7);
+  }
+
   public void manualSync(Integer limit) {
-//    cacheService.preventTooManyRequest("manualSync", 30);
+    //    cacheService.preventTooManyRequest("manualSync", 30);
     List<KvOrderDto> manualSyncOrders = kiotvietServiceClient.findAllManualSync(limit);
     if (ListUtil.isNotEmpty(manualSyncOrders)) {
       List<String> orderCodes =
@@ -417,7 +419,8 @@ public class WebHookService extends AbstractService {
 
   // public to support manual sync one invoice by leader
   public void syncInvoicesIfNeed(Long branchId, List<String> invoiceCodesFull) {
-    List<String> invoiceCodes = invoiceCodesFull.stream().map(this::getLastAndValidInvoiceCode).toList();
+    List<String> invoiceCodes =
+        invoiceCodesFull.stream().map(this::getLastAndValidInvoiceCode).toList();
     List<String> needToSyncInvoiceCodes =
         wmsCrudClient.findNotExistedInvoiceFromList(branchId, invoiceCodes);
     needToSyncInvoiceCodes.forEach(
