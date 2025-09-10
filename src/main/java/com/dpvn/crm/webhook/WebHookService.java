@@ -1,6 +1,7 @@
 package com.dpvn.crm.webhook;
 
 import com.dpvn.crm.campaign.DispatchService;
+import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crm.client.KiotvietServiceClient;
 import com.dpvn.crm.client.ReportCrudClient;
 import com.dpvn.crm.client.WmsCrudClient;
@@ -12,7 +13,9 @@ import com.dpvn.crm.helper.ConfigurationService;
 import com.dpvn.crm.user.UserService;
 import com.dpvn.crm.voip24h.domain.ViCallLogDto;
 import com.dpvn.crmcrudservice.domain.constant.Customers;
+import com.dpvn.crmcrudservice.domain.dto.CustomerAddressDto;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
+import com.dpvn.crmcrudservice.domain.dto.CustomerReferenceDto;
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
 import com.dpvn.kiotviet.domain.KvAddressBookDto;
 import com.dpvn.kiotviet.domain.KvCustomerDto;
@@ -20,19 +23,25 @@ import com.dpvn.kiotviet.domain.KvInvoiceDto;
 import com.dpvn.kiotviet.domain.KvOrderDto;
 import com.dpvn.kiotviet.domain.constant.KvOrders;
 import com.dpvn.reportcrudservice.domain.constant.KvStatus;
-import com.dpvn.shared.config.CacheService;
 import com.dpvn.shared.exception.BadRequestException;
 import com.dpvn.shared.service.AbstractService;
 import com.dpvn.shared.util.FastMap;
+import com.dpvn.shared.util.FileUtil;
 import com.dpvn.shared.util.ListUtil;
 import com.dpvn.shared.util.ObjectUtil;
 import com.dpvn.shared.util.StringUtil;
 import com.dpvn.shared.util.SystemUtil;
+import com.dpvn.thuocsi.domain.TsCustomerDto;
 import com.dpvn.webhookhandler.domain.Topics;
 import com.fasterxml.jackson.core.type.TypeReference;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.time.Instant;
+import java.util.Base64;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -48,7 +57,7 @@ public class WebHookService extends AbstractService {
   private final ReportCrudClient reportCrudClient;
   private final DispatchService dispatchService;
   private final ConfigurationService configurationService;
-  private final CacheService cacheService;
+  private final CrmCrudClient crmCrudClient;
 
   public WebHookService(
       UserService userService,
@@ -59,7 +68,7 @@ public class WebHookService extends AbstractService {
       ReportCrudClient reportCrudClient,
       DispatchService dispatchService,
       ConfigurationService configurationService,
-      CacheService cacheService) {
+      CrmCrudClient crmCrudClient) {
     this.userService = userService;
     this.customerService = customerService;
     this.webHookHandlerService = webHookHandlerService;
@@ -68,7 +77,7 @@ public class WebHookService extends AbstractService {
     this.reportCrudClient = reportCrudClient;
     this.dispatchService = dispatchService;
     this.configurationService = configurationService;
-    this.cacheService = cacheService;
+    this.crmCrudClient = crmCrudClient;
   }
 
   @KafkaListener(topics = Topics.KV_UPDATE_ORDER, groupId = "crm-group")
@@ -96,7 +105,7 @@ public class WebHookService extends AbstractService {
   }
 
   @KafkaListener(topics = Topics.KV_UPDATE_CUSTOMER, groupId = "crm-group")
-  public void handleUpdateCustomerMessage(ConsumerRecord<String, String> message) {
+  public void handleUpdateKiotVietCustomerMessage(ConsumerRecord<String, String> message) {
     // Access record details
     String key = message.key();
     String value = message.value();
@@ -117,6 +126,154 @@ public class WebHookService extends AbstractService {
                     .forEach(
                         customerHookDto ->
                             kiotvietServiceClient.syncCustomer(customerHookDto.getId())));
+  }
+
+  @KafkaListener(topics = Topics.TS_UPDATE_CUSTOMER, groupId = "crm-group")
+  public void handleUpdateThuocSiCustomerMessage(ConsumerRecord<String, String> message) {
+    // Access record details
+    String key = message.key();
+    String value = message.value();
+    int partition = message.partition();
+    long offset = message.offset();
+    long timestamp = message.timestamp();
+
+    try {
+      TsCustomerDto tsCustomerDto = ObjectUtil.readValue(value, new TypeReference<>() {});
+
+      List<CustomerDto> customerDtos =
+          crmCrudClient.findCustomersByMobilePhone(tsCustomerDto.getPhone());
+
+      if (ListUtil.isEmpty(customerDtos)) {
+        CustomerDto customerDto = new CustomerDto();
+        customerDto.setIdf(tsCustomerDto.getCustomerId());
+        customerDto.setCustomerName(tsCustomerDto.getName());
+        customerDto.setMobilePhone(tsCustomerDto.getPhone());
+        customerDto.setEmail(tsCustomerDto.getEmail());
+        customerDto.setTaxCode(tsCustomerDto.getTaxCode());
+        customerDto.setSourceId(Customers.Source.CRAFTONLINE);
+
+        CustomerAddressDto addressDto = new CustomerAddressDto();
+        addressDto.setActive(true);
+        addressDto.setAddress(tsCustomerDto.getAddress());
+        customerDto.setAddresses(List.of(addressDto));
+
+        List<CustomerReferenceDto> referenceDtos = extractReferences(tsCustomerDto);
+        if (ListUtil.isNotEmpty(referenceDtos)) {
+          customerDto.setReferences(referenceDtos);
+        }
+
+        crmCrudClient.createNewCustomer(customerDto);
+      } else {
+        FastMap updatedData = FastMap.create().add("idf", tsCustomerDto.getCustomerId());
+        if (StringUtil.isNotEmpty(tsCustomerDto.getName())) {
+          updatedData.put("customerName", tsCustomerDto.getName());
+        }
+        if (StringUtil.isNotEmpty(tsCustomerDto.getTaxCode())) {
+          updatedData.put("taxCode", tsCustomerDto.getTaxCode());
+        }
+        if (StringUtil.isNotEmpty(tsCustomerDto.getPhone())) {
+          updatedData.put("mobilePhone", tsCustomerDto.getPhone());
+        }
+        if (StringUtil.isNotEmpty(tsCustomerDto.getEmail())) {
+          updatedData.put("email", tsCustomerDto.getEmail());
+        }
+        if (StringUtil.isNotEmpty(tsCustomerDto.getAddress())) {
+          CustomerAddressDto addressDto = new CustomerAddressDto();
+          addressDto.setActive(true);
+          addressDto.setAddress(tsCustomerDto.getAddress());
+          updatedData.put("addresses", List.of(addressDto));
+        }
+        List<CustomerReferenceDto> referenceDtos = extractReferences(tsCustomerDto);
+        if (ListUtil.isNotEmpty(referenceDtos)) {
+          updatedData.put("references", referenceDtos);
+        }
+
+        customerDtos.forEach(
+            customerDto -> crmCrudClient.updateExistedCustomer(customerDto.getId(), updatedData));
+      }
+    } catch (Exception e) {
+      LOGGER.error("Ignore ts update customer failed with error: {}", e.getMessage(), e);
+    }
+  }
+
+  private List<CustomerReferenceDto> extractReferences(TsCustomerDto tsCustomerDto) {
+    return Stream.of(
+            tsCustomerDto.getLicenses().stream()
+                .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
+                .map(
+                    l ->
+                        new CustomerReferenceDto(
+                            Customers.References.PAPER_LICENSE,
+                            toBase64(l.getPublicURL()),
+                            l.getPublicURL()))
+                .toList(),
+            tsCustomerDto.getPharmacyEligibilityLicense().stream()
+                .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
+                .map(
+                    l ->
+                        new CustomerReferenceDto(
+                            Customers.References.PAPER_PHARMACY_ELIGIBILITY_LICENSE,
+                            toBase64(l.getPublicURL()),
+                            l.getPublicURL()))
+                .toList(),
+            tsCustomerDto.getExaminationAndTreatmentLicense().stream()
+                .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
+                .map(
+                    l ->
+                        new CustomerReferenceDto(
+                            Customers.References.PAPER_EXAMINATION_TREATMENT_LICENSE,
+                            toBase64(l.getPublicURL()),
+                            l.getPublicURL()))
+                .toList(),
+            tsCustomerDto.getGpp().stream()
+                .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
+                .map(
+                    l ->
+                        new CustomerReferenceDto(
+                            Customers.References.PAPER_GPP,
+                            toBase64(l.getPublicURL()),
+                            l.getPublicURL()))
+                .toList(),
+            tsCustomerDto.getGdp().stream()
+                .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
+                .map(
+                    l ->
+                        new CustomerReferenceDto(
+                            Customers.References.PAPER_GDP,
+                            toBase64(l.getPublicURL()),
+                            l.getPublicURL()))
+                .toList(),
+            tsCustomerDto.getGsp().stream()
+                .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
+                .map(
+                    l ->
+                        new CustomerReferenceDto(
+                            Customers.References.PAPER_GSP,
+                            toBase64(l.getPublicURL()),
+                            l.getPublicURL()))
+                .toList())
+        .flatMap(List::stream)
+        .toList();
+  }
+
+  private String toBase64(String url) {
+    InputStream inputStream = FileUtil.loadImageInputStream(url);
+    try (inputStream;
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+      if (inputStream == null) {
+        return null;
+      }
+      byte[] buffer = new byte[8192];
+      int bytesRead;
+      while ((bytesRead = inputStream.read(buffer)) != -1) {
+        outputStream.write(buffer, 0, bytesRead);
+      }
+      byte[] imageBytes = outputStream.toByteArray();
+      return Base64.getEncoder().encodeToString(imageBytes);
+    } catch (Exception e) {
+      LOGGER.error("Failed to convert image to Base64: {}", e.getMessage(), e);
+      return null;
+    }
   }
 
   @KafkaListener(topics = Topics.VOIP24H_CALL_LOGS_UPDATE, groupId = "voip24h-group")
@@ -380,7 +537,7 @@ public class WebHookService extends AbstractService {
   /*
   In the kiotviet, tranngocm start at : 19/04/2025 15:50 (based on ORDER)
    */
-  @Scheduled(cron = "0 30 7,10,12,15,18 * * *", zone = "Asia/Ho_Chi_Minh")
+  @Scheduled(cron = "0 30 7,9,10,11,12,13,14,15,16,17,18 * * *", zone = "Asia/Ho_Chi_Minh")
   public void manualSync() {
     manualSync(7);
   }
@@ -402,38 +559,61 @@ public class WebHookService extends AbstractService {
 
       Long branchId = manualSyncOrders.get(0).getBranchId();
       syncOrdersIfNeed(branchId, orderCodes);
-      syncInvoicesIfNeed(branchId, invoiceCodes);
+      syncInvoicesIfNeed(invoiceCodes);
     }
   }
 
+  // branch id không cần do lấy default bên kiotviet service rồi
   private void syncOrdersIfNeed(Long branchId, List<String> orderCodes) {
     List<String> needToSyncOrderCodes =
         wmsCrudClient.findNotExistedOrderFromList(branchId, orderCodes);
     needToSyncOrderCodes.forEach(
         orderCode -> {
           KvOrderDto kvOrderDto = kiotvietServiceClient.syncOrder(orderCode);
-          OrderHookDto orderHookDto = transformKvrderDtoToOrderHookDto(kvOrderDto);
-          processOrderHookDto(orderHookDto);
+          if (kvOrderDto != null) {
+            OrderHookDto orderHookDto = transformKvrderDtoToOrderHookDto(kvOrderDto);
+            processOrderHookDto(orderHookDto);
+          }
         });
   }
 
   // public to support manual sync one invoice by leader
-  public void syncInvoicesIfNeed(Long branchId, List<String> invoiceCodesFull) {
-    List<String> invoiceCodes =
-        invoiceCodesFull.stream().map(this::getLastAndValidInvoiceCode).toList();
+  // branch id không cần do lấy default bên kiotviet service rồi
+  public void syncInvoicesIfNeed(List<String> invoiceCodesFull) {
+    // không chỉ đồng bộ invoice cuối, phải đồng bộ tất do cần update status của các invoice trước
+    // thành Cancel :(
     List<String> needToSyncInvoiceCodes =
-        wmsCrudClient.findNotExistedInvoiceFromList(branchId, invoiceCodes);
+        invoiceCodesFull.stream().map(this::getLastAndValidInvoiceCode).toList();
     needToSyncInvoiceCodes.forEach(
         invoiceCode -> {
           KvInvoiceDto kvInvoiceDto = kiotvietServiceClient.syncInvoice(invoiceCode);
-          InvoiceHookDto invoiceHookDto = transformKvInvoiceDtoToInvoiceHookDto(kvInvoiceDto);
-          processInvoiceHookDto(invoiceHookDto);
+          if (kvInvoiceDto != null) {
+            InvoiceHookDto invoiceHookDto = transformKvInvoiceDtoToInvoiceHookDto(kvInvoiceDto);
+            processInvoiceHookDto(invoiceHookDto);
+          }
         });
+
+    // cancel các hóa đơn hủy
+    List<String> needToCancelInvoiceCodes =
+        invoiceCodesFull.stream()
+            .map(this::getFirstAndValidInvoiceCodes)
+            .flatMap(Collection::stream)
+            .toList();
+    wmsCrudClient.updateBatchInvoiceStatus(
+        FastMap.create()
+            .add("status", KvStatus.Invoice.CANCELLED)
+            .add("codes", needToCancelInvoiceCodes));
   }
 
   private String getLastAndValidInvoiceCode(String invoiceCodes) {
     List<String> invoiceCodesList = StringUtil.split(invoiceCodes, ",");
     return invoiceCodesList.get(invoiceCodesList.size() - 1).trim();
+  }
+
+  private List<String> getFirstAndValidInvoiceCodes(String invoiceCodes) {
+    List<String> invoiceCodesList = StringUtil.split(invoiceCodes, ",");
+    invoiceCodesList.remove(invoiceCodesList.size() - 1);
+    return invoiceCodesList.stream().map(String::trim).toList();
   }
 
   private OrderHookDto transformKvrderDtoToOrderHookDto(KvOrderDto kvOrderDto) {

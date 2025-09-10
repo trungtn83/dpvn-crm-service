@@ -200,12 +200,7 @@ public class CustomerService extends AbstractService {
       customerDto.setCreatedBy(userId);
       customerDto.setActive(true);
       customerDto.setStatus(Customers.Status.VERIFIED);
-      CustomerDto result =
-          customerDto.getId() == null
-              ? crmCrudClient.createNewCustomer(customerDto)
-              : crmCrudClient.updateExistedCustomer(
-                  customerDto.getId(),
-                  FastMap.create().add("active", true).add("status", Customers.Status.VERIFIED));
+      CustomerDto result = crmCrudClient.createNewCustomer(customerDto);
       // auto generate code when user leave it empty
       if (StringUtil.isEmpty(result.getCustomerCode())) {
         result =

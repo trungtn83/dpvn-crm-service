@@ -1,6 +1,15 @@
 package com.dpvn.crm.client;
 
-import com.dpvn.crmcrudservice.domain.dto.*;
+import com.dpvn.crmcrudservice.domain.dto.CampaignDto;
+import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
+import com.dpvn.crmcrudservice.domain.dto.CustomerTypeDto;
+import com.dpvn.crmcrudservice.domain.dto.InteractionDto;
+import com.dpvn.crmcrudservice.domain.dto.LeaveRequestDto;
+import com.dpvn.crmcrudservice.domain.dto.SaleCustomerCategoryDto;
+import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
+import com.dpvn.crmcrudservice.domain.dto.SaleCustomerStateDto;
+import com.dpvn.crmcrudservice.domain.dto.TaskDto;
+import com.dpvn.crmcrudservice.domain.dto.UserDto;
 import com.dpvn.crmcrudservice.domain.entity.report.CustomerBySeller;
 import com.dpvn.crmcrudservice.domain.entity.report.InteractionBySeller;
 import com.dpvn.crmcrudservice.domain.entity.report.TaskBySeller;
@@ -10,7 +19,12 @@ import com.dpvn.shared.util.FastMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @FeignClient(name = "crm-crud-service", contextId = "crm-crud-service-client")
 public interface CrmCrudClient {
@@ -245,9 +259,9 @@ public interface CrmCrudClient {
 
   // CAMPAIGN
   // ===========================================================================================================
+  // TODO: search by default all, need to update later
   @GetMapping("/campaign")
-  PagingResponse<CampaignDto>
-      findAllCampaigns(); // TODO: search by default all, need to update later
+  PagingResponse<CampaignDto> findAllCampaigns();
 
   @PostMapping("/campaign/{id}/assign-customers-to-sales")
   void assignToSaleInCampaign(@PathVariable Long id, @RequestBody FastMap body);

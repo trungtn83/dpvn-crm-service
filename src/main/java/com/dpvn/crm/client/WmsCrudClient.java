@@ -14,6 +14,10 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 @FeignClient(name = "wms-crud-service", contextId = "wms-crud-service-client")
 public interface WmsCrudClient {
+  @PostMapping("/order/find-not-existed-from-list")
+  List<String> findNotExistedOrderFromList(
+      @RequestHeader Long branchId, @RequestBody List<String> orderCodes);
+
   /**
    * @param body - status: String
    *             - customerIds: List<Long>
@@ -67,7 +71,10 @@ public interface WmsCrudClient {
   List<String> findNotExistedInvoiceFromList(
       @RequestHeader Long branchId, @RequestBody List<String> orderCodes);
 
-  @PostMapping("/order/find-not-existed-from-list")
-  List<String> findNotExistedOrderFromList(
-      @RequestHeader Long branchId, @RequestBody List<String> orderCodes);
+  /**
+   * @param body - status
+   *             - codes
+   */
+  @PostMapping("/invoice/update-batch-status")
+  void updateBatchInvoiceStatus(@RequestBody FastMap body);
 }

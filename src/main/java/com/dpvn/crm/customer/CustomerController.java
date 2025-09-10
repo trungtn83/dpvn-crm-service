@@ -4,7 +4,12 @@ import com.dpvn.crm.user.UserService;
 import com.dpvn.crm.user.UserUtil;
 import com.dpvn.crmcrudservice.domain.constant.Customers;
 import com.dpvn.crmcrudservice.domain.constant.SaleCustomers;
-import com.dpvn.crmcrudservice.domain.dto.*;
+import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
+import com.dpvn.crmcrudservice.domain.dto.CustomerTypeDto;
+import com.dpvn.crmcrudservice.domain.dto.SaleCustomerCategoryDto;
+import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
+import com.dpvn.crmcrudservice.domain.dto.SaleCustomerStateDto;
+import com.dpvn.crmcrudservice.domain.dto.UserDto;
 import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.exception.BadRequestException;
 import com.dpvn.shared.util.FastMap;
@@ -12,7 +17,15 @@ import com.dpvn.shared.util.ListUtil;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/customer")
@@ -22,7 +35,6 @@ public class CustomerController {
   private final SaleCustomerService saleCustomerService;
   private final SaleCustomerCategoryService saleCustomerCategoryService;
   private final UserService userService;
-  private final CustomerCraftService customerCraftService;
   private final CustomerTypeService customerTypeService;
 
   public CustomerController(
@@ -30,13 +42,11 @@ public class CustomerController {
       SaleCustomerService saleCustomerService,
       SaleCustomerCategoryService saleCustomerCategoryService,
       UserService userService,
-      CustomerCraftService customerCraftService,
       CustomerTypeService customerTypeService) {
     this.customerService = customerService;
     this.saleCustomerService = saleCustomerService;
     this.saleCustomerCategoryService = saleCustomerCategoryService;
     this.userService = userService;
-    this.customerCraftService = customerCraftService;
     this.customerTypeService = customerTypeService;
   }
 
@@ -287,11 +297,6 @@ public class CustomerController {
       throw new BadRequestException("Only GOD can init relationship");
     }
     customerService.initRelationship();
-  }
-
-  @PostMapping("/craft/{sourceId}")
-  public void craftCustomers(@PathVariable Integer sourceId) {
-    customerCraftService.craftCustomers(sourceId);
   }
 
   @GetMapping("/types")

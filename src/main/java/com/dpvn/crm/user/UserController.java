@@ -1,10 +1,16 @@
 package com.dpvn.crm.user;
 
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
+import com.dpvn.shared.domain.BaseDto;
 import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.util.FastMap;
 import java.util.List;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/user")
@@ -42,7 +48,11 @@ public class UserController {
   @GetMapping
   public PagingResponse<UserDto> listAllUsers() {
     PagingResponse<UserDto> users = userService.listAllUsers();
-    users.getRows().forEach(u -> u.setPassword(null));
+    List<UserDto> rows = users.getRows().stream().filter(BaseDto::getActive).toList();
+    rows.forEach(u -> u.setPassword(null));
+    users.setRows(rows);
+    users.setTotal(rows.size());
+    users.setPageSize(rows.size());
     return users;
   }
 

@@ -1,6 +1,13 @@
 package com.dpvn.crm.voip24h.client;
 
 public class UserInfo {
+  public static final String API_URL_AUTH = "https://api.voip24h.vn/v3/authentication";
+  public static final String API_USERNAME = "info@duocphamvietnhat.com";
+  public static final String API_KEY = "857ec340e9bb45e1b45f3afd94ecbd7ce201b25b";
+  public static final String API_SECRET = "1eed45cb621810dfb12395ef1b645e5e8da38ee0";
+
+  public static final String API_URL = "https://api.voip24h.vn/v3";
+
   private String url;
   private String authorization;
   private int timeout;
