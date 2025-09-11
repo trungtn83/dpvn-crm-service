@@ -1,7 +1,6 @@
 package com.dpvn.crm.user;
 
 import com.dpvn.crmcrudservice.domain.dto.UserDto;
-import com.dpvn.shared.domain.BaseDto;
 import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.util.FastMap;
 import java.util.List;
@@ -48,7 +47,7 @@ public class UserController {
   @GetMapping
   public PagingResponse<UserDto> listAllUsers() {
     PagingResponse<UserDto> users = userService.listAllUsers();
-    List<UserDto> rows = users.getRows().stream().filter(BaseDto::getActive).toList();
+    List<UserDto> rows = users.getRows().stream().toList();
     rows.forEach(u -> u.setPassword(null));
     users.setRows(rows);
     users.setTotal(rows.size());
