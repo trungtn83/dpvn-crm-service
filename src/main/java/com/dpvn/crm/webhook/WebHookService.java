@@ -26,7 +26,6 @@ import com.dpvn.reportcrudservice.domain.constant.KvStatus;
 import com.dpvn.shared.exception.BadRequestException;
 import com.dpvn.shared.service.AbstractService;
 import com.dpvn.shared.util.FastMap;
-import com.dpvn.shared.util.FileUtil;
 import com.dpvn.shared.util.ListUtil;
 import com.dpvn.shared.util.ObjectUtil;
 import com.dpvn.shared.util.StringUtil;
@@ -34,10 +33,7 @@ import com.dpvn.shared.util.SystemUtil;
 import com.dpvn.thuocsi.domain.TsCustomerDto;
 import com.dpvn.webhookhandler.domain.Topics;
 import com.fasterxml.jackson.core.type.TypeReference;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -146,6 +142,7 @@ public class WebHookService extends AbstractService {
       if (ListUtil.isEmpty(customerDtos)) {
         CustomerDto customerDto = new CustomerDto();
         customerDto.setIdf(tsCustomerDto.getCustomerId());
+        customerDto.setCustomerCode(tsCustomerDto.getCode());
         customerDto.setCustomerName(tsCustomerDto.getName());
         customerDto.setMobilePhone(tsCustomerDto.getPhone());
         customerDto.setEmail(tsCustomerDto.getEmail());
@@ -180,6 +177,7 @@ public class WebHookService extends AbstractService {
         if (StringUtil.isNotEmpty(tsCustomerDto.getAddress())) {
           CustomerAddressDto addressDto = new CustomerAddressDto();
           addressDto.setActive(true);
+          addressDto.setStatus("DEFAULT");
           addressDto.setAddress(tsCustomerDto.getAddress());
           updatedData.put("addresses", List.of(addressDto));
         }
@@ -257,30 +255,32 @@ public class WebHookService extends AbstractService {
   }
 
   private String toBase64(String url) {
-    InputStream inputStream = FileUtil.loadImageInputStream(url);
-    try (inputStream;
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-      if (inputStream == null) {
-        return null;
-      }
-      byte[] buffer = new byte[8192];
-      int bytesRead;
-      while ((bytesRead = inputStream.read(buffer)) != -1) {
-        outputStream.write(buffer, 0, bytesRead);
-      }
-      byte[] imageBytes = outputStream.toByteArray();
-      return Base64.getEncoder().encodeToString(imageBytes);
-    } catch (Exception e) {
-      LOGGER.error("Failed to convert image to Base64: {}", e.getMessage(), e);
-      return null;
-    }
+    //    InputStream inputStream = FileUtil.loadImageInputStream(url);
+    //    try (inputStream;
+    //         ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+    //      if (inputStream == null) {
+    //        return null;
+    //      }
+    //      byte[] buffer = new byte[8192];
+    //      int bytesRead;
+    //      while ((bytesRead = inputStream.read(buffer)) != -1) {
+    //        outputStream.write(buffer, 0, bytesRead);
+    //      }
+    //      byte[] imageBytes = outputStream.toByteArray();
+    //      return Base64.getEncoder().encodeToString(imageBytes);
+    //    } catch (Exception e) {
+    //      LOGGER.error("Failed to convert image to Base64: {}", e.getMessage(), e);
+    //      return null;
+    //    }
+    // DB big and big, need other CDN service to store image
+    return url;
   }
 
   @KafkaListener(topics = Topics.VOIP24H_CALL_LOGS_UPDATE, groupId = "voip24h-group")
   public void handleUpdateCallLogMessage(ConsumerRecord<String, String> message) {
-    String value = message.value();
-    LOGGER.info("Received {} payload: {}", "CALLLOG", value);
-    ViCallLogDto viCallLogDto = ObjectUtil.readValue(value, ViCallLogDto.class);
+    String rawValue = message.value();
+    LOGGER.info("Received {} payload: {}", "CALLLOG", rawValue);
+    ViCallLogDto viCallLogDto = ObjectUtil.readValue(rawValue, new TypeReference<>() {});
     reportCrudClient.syncAllCallLogs(List.of(viCallLogDto));
   }
 
@@ -288,7 +288,7 @@ public class WebHookService extends AbstractService {
   public void handleWebsiteCreateOrderMessage(ConsumerRecord<String, String> message) {
     String value = message.value();
     LOGGER.info("Received {} payload: {}", "WEBSITE duocphamvietnhat", value);
-    FastMap order = ObjectUtil.readValue(value, FastMap.class);
+    FastMap order = ObjectUtil.readValue(value, new TypeReference<>() {});
 
     processWebsiteCreateOrder(order.getMap("data"));
   }
