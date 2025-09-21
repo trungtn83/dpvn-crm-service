@@ -4,6 +4,7 @@ import com.dpvn.crm.campaign.DispatchService;
 import com.dpvn.crm.client.CrmCrudClient;
 import com.dpvn.crm.client.KiotvietServiceClient;
 import com.dpvn.crm.client.ReportCrudClient;
+import com.dpvn.crm.client.StorageClient;
 import com.dpvn.crm.client.WmsCrudClient;
 import com.dpvn.crm.customer.CustomerService;
 import com.dpvn.crm.customer.dto.InvoiceHookDto;
@@ -30,6 +31,7 @@ import com.dpvn.shared.util.ListUtil;
 import com.dpvn.shared.util.ObjectUtil;
 import com.dpvn.shared.util.StringUtil;
 import com.dpvn.shared.util.SystemUtil;
+import com.dpvn.storageservice.domain.FileDto;
 import com.dpvn.thuocsi.domain.TsCustomerDto;
 import com.dpvn.webhookhandler.domain.Topics;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -40,7 +42,6 @@ import java.util.Objects;
 import java.util.stream.Stream;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -54,6 +55,7 @@ public class WebHookService extends AbstractService {
   private final DispatchService dispatchService;
   private final ConfigurationService configurationService;
   private final CrmCrudClient crmCrudClient;
+  private final StorageClient storageClient;
 
   public WebHookService(
       UserService userService,
@@ -64,7 +66,8 @@ public class WebHookService extends AbstractService {
       ReportCrudClient reportCrudClient,
       DispatchService dispatchService,
       ConfigurationService configurationService,
-      CrmCrudClient crmCrudClient) {
+      CrmCrudClient crmCrudClient,
+      StorageClient storageClient) {
     this.userService = userService;
     this.customerService = customerService;
     this.webHookHandlerService = webHookHandlerService;
@@ -74,6 +77,7 @@ public class WebHookService extends AbstractService {
     this.dispatchService = dispatchService;
     this.configurationService = configurationService;
     this.crmCrudClient = crmCrudClient;
+    this.storageClient = storageClient;
   }
 
   @KafkaListener(topics = Topics.KV_UPDATE_ORDER, groupId = "crm-group")
@@ -149,8 +153,14 @@ public class WebHookService extends AbstractService {
         customerDto.setTaxCode(tsCustomerDto.getTaxCode());
         customerDto.setSourceId(Customers.Source.CRAFTONLINE);
 
+        // đưa vào kho vàng luôn vì khách chuẩn rồi
+        customerDto.setActive(true);
+        customerDto.setDeleted(false);
+        customerDto.setStatus(Customers.Status.VERIFIED);
+
         CustomerAddressDto addressDto = new CustomerAddressDto();
         addressDto.setActive(true);
+        addressDto.setDeleted(false);
         addressDto.setAddress(tsCustomerDto.getAddress());
         customerDto.setAddresses(List.of(addressDto));
 
@@ -177,6 +187,7 @@ public class WebHookService extends AbstractService {
         if (StringUtil.isNotEmpty(tsCustomerDto.getAddress())) {
           CustomerAddressDto addressDto = new CustomerAddressDto();
           addressDto.setActive(true);
+          addressDto.setDeleted(false);
           addressDto.setStatus("DEFAULT");
           addressDto.setAddress(tsCustomerDto.getAddress());
           updatedData.put("addresses", List.of(addressDto));
@@ -202,7 +213,7 @@ public class WebHookService extends AbstractService {
                     l ->
                         new CustomerReferenceDto(
                             Customers.References.PAPER_LICENSE,
-                            toBase64(l.getPublicURL()),
+                            toStorageSlug(l.getPublicURL()),
                             l.getPublicURL()))
                 .toList(),
             tsCustomerDto.getPharmacyEligibilityLicense().stream()
@@ -211,7 +222,7 @@ public class WebHookService extends AbstractService {
                     l ->
                         new CustomerReferenceDto(
                             Customers.References.PAPER_PHARMACY_ELIGIBILITY_LICENSE,
-                            toBase64(l.getPublicURL()),
+                            toStorageSlug(l.getPublicURL()),
                             l.getPublicURL()))
                 .toList(),
             tsCustomerDto.getExaminationAndTreatmentLicense().stream()
@@ -220,7 +231,7 @@ public class WebHookService extends AbstractService {
                     l ->
                         new CustomerReferenceDto(
                             Customers.References.PAPER_EXAMINATION_TREATMENT_LICENSE,
-                            toBase64(l.getPublicURL()),
+                            toStorageSlug(l.getPublicURL()),
                             l.getPublicURL()))
                 .toList(),
             tsCustomerDto.getGpp().stream()
@@ -229,7 +240,7 @@ public class WebHookService extends AbstractService {
                     l ->
                         new CustomerReferenceDto(
                             Customers.References.PAPER_GPP,
-                            toBase64(l.getPublicURL()),
+                            toStorageSlug(l.getPublicURL()),
                             l.getPublicURL()))
                 .toList(),
             tsCustomerDto.getGdp().stream()
@@ -238,7 +249,7 @@ public class WebHookService extends AbstractService {
                     l ->
                         new CustomerReferenceDto(
                             Customers.References.PAPER_GDP,
-                            toBase64(l.getPublicURL()),
+                            toStorageSlug(l.getPublicURL()),
                             l.getPublicURL()))
                 .toList(),
             tsCustomerDto.getGsp().stream()
@@ -247,33 +258,22 @@ public class WebHookService extends AbstractService {
                     l ->
                         new CustomerReferenceDto(
                             Customers.References.PAPER_GSP,
-                            toBase64(l.getPublicURL()),
+                            toStorageSlug(l.getPublicURL()),
                             l.getPublicURL()))
                 .toList())
         .flatMap(List::stream)
         .toList();
   }
 
-  private String toBase64(String url) {
-    //    InputStream inputStream = FileUtil.loadImageInputStream(url);
-    //    try (inputStream;
-    //         ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-    //      if (inputStream == null) {
-    //        return null;
-    //      }
-    //      byte[] buffer = new byte[8192];
-    //      int bytesRead;
-    //      while ((bytesRead = inputStream.read(buffer)) != -1) {
-    //        outputStream.write(buffer, 0, bytesRead);
-    //      }
-    //      byte[] imageBytes = outputStream.toByteArray();
-    //      return Base64.getEncoder().encodeToString(imageBytes);
-    //    } catch (Exception e) {
-    //      LOGGER.error("Failed to convert image to Base64: {}", e.getMessage(), e);
-    //      return null;
-    //    }
-    // DB big and big, need other CDN service to store image
-    return url;
+  private String toStorageSlug(String url) {
+    try {
+      FileDto fileDto = storageClient.uploadFileFromUrl(url);
+      return fileDto.getSlug();
+    } catch (Exception e) {
+      LOGGER.error(
+          "Ignore ts upload file from url {} failed with error: {}", url, e.getMessage(), e);
+      return "";
+    }
   }
 
   @KafkaListener(topics = Topics.VOIP24H_CALL_LOGS_UPDATE, groupId = "voip24h-group")
@@ -532,14 +532,6 @@ public class WebHookService extends AbstractService {
         LOGGER.info("Processed update for NO NEED ANY ACTION invoice {}", invoiceHookDto.getCode());
       }
     }
-  }
-
-  /*
-  In the kiotviet, tranngocm start at : 19/04/2025 15:50 (based on ORDER)
-   */
-  @Scheduled(cron = "0 30 7,9,10,11,12,13,14,15,16,17,18 * * *", zone = "Asia/Ho_Chi_Minh")
-  public void manualSync() {
-    manualSync(7);
   }
 
   public void manualSync(Integer limit) {

@@ -66,6 +66,7 @@ public class SaleCustomerService {
         newSaleCustomerDto.setRelationshipType(RelationshipType.INVOLVED);
         newSaleCustomerDto.setReasonId(reasonId);
         newSaleCustomerDto.setActive(Boolean.TRUE);
+        newSaleCustomerDto.setDeleted(false);
         createNewSaleCustomer(newSaleCustomerDto);
       }
     } else {

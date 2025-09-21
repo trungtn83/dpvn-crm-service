@@ -199,6 +199,7 @@ public class CustomerService extends AbstractService {
       // valid
       customerDto.setCreatedBy(userId);
       customerDto.setActive(true);
+      customerDto.setDeleted(false);
       customerDto.setStatus(Customers.Status.VERIFIED);
       CustomerDto result = crmCrudClient.createNewCustomer(customerDto);
       // auto generate code when user leave it empty
@@ -220,6 +221,7 @@ public class CustomerService extends AbstractService {
     CustomerDto customerDto = new CustomerDto();
     customerDto.setId(body.getLong("id"));
     customerDto.setActive(body.getBoolean("active"));
+    customerDto.setDeleted(false);
     customerDto.setCustomerCode(body.getString("customerCode"));
     customerDto.setCustomerName(body.getString("customerName"));
     customerDto.setBirthday(body.getInstant("birthday"));
