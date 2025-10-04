@@ -352,6 +352,9 @@ public class CustomerService extends AbstractService {
 
   private SaleCustomerDto initSaleCustomerDto(Long customerId) {
     CustomerDto customerDto = crmCrudClient.findCustomerById(customerId);
+    if (customerDto == null) {
+      throw new BadRequestException(String.format("Customer with id %s not found", customerId));
+    }
     SaleCustomerDto saleCustomerDto = new SaleCustomerDto();
     saleCustomerDto.setCustomerId(customerId);
     saleCustomerDto.setCustomerDto(customerDto);

@@ -1,25 +1,23 @@
-package com.dpvn.crm.wms.invoice;
+package com.dpvn.crm.wms.order;
 
-import com.dpvn.crm.user.UserService;
 import com.dpvn.shared.domain.constant.Globals;
 import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.util.FastMap;
-import com.dpvn.wmscrudservice.domain.dto.InvoiceDto;
-import java.util.List;
+import com.dpvn.wmscrudservice.domain.dto.OrderDto;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController
-@RequestMapping("/wms/invoice")
-public class InvoiceController {
-  private final InvoiceService invoiceService;
-  private final UserService userService;
+import java.util.List;
 
-  public InvoiceController(InvoiceService invoiceService, UserService userService) {
-    this.invoiceService = invoiceService;
-    this.userService = userService;
+@RestController
+@RequestMapping("/wms/order")
+public class OrderController {
+  private final OrderService orderService;
+
+  public OrderController(OrderService orderService) {
+    this.orderService = orderService;
   }
 
   /**
@@ -27,7 +25,7 @@ public class InvoiceController {
    * @return
    */
   @PostMapping("/find-by-options")
-  public PagingResponse<InvoiceDto> findInvoicesByOptions(@RequestBody FastMap body) {
+  public PagingResponse<OrderDto> findOrdersByOptions(@RequestBody FastMap body) {
     String filterText = body.getString("filterText");
     Long sellerId = body.getLong("sellerId");
     Long customerId = body.getLong("customerId");
@@ -35,7 +33,12 @@ public class InvoiceController {
     Integer page = body.getInt(0, "page");
     Integer pageSize = body.getInt(Globals.Paging.PAGE_SIZE, "pageSize");
 
-    return invoiceService.findInvoicesByOptions(
+    return orderService.findOrdersByOptions(
         filterText, sellerId, customerId, statuses, page, pageSize);
+  }
+
+  @PostMapping("/show-invoices")
+  public List<String> showOrderInvoicesFromMisa(@RequestBody List<FastMap> refs) {
+    return orderService.showOrderInvoicesFromMisa(refs);
   }
 }

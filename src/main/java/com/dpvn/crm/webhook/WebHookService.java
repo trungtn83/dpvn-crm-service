@@ -35,14 +35,17 @@ import com.dpvn.storageservice.domain.FileDto;
 import com.dpvn.thuocsi.domain.TsCustomerDto;
 import com.dpvn.webhookhandler.domain.Topics;
 import com.fasterxml.jackson.core.type.TypeReference;
-import java.time.Instant;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Stream;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class WebHookService extends AbstractService {
@@ -116,7 +119,8 @@ public class WebHookService extends AbstractService {
     // TODO: sync one customer by call back to kiotviet
     // data from hook does not have enough information to sync customer (wardname, extra phones...)
     // fuk kiotviet webhook here
-    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(value, new TypeReference<>() {});
+    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(value, new TypeReference<>() {
+    });
     payloadDto
         .getNotifications()
         .forEach(
@@ -138,7 +142,8 @@ public class WebHookService extends AbstractService {
     long timestamp = message.timestamp();
 
     try {
-      TsCustomerDto tsCustomerDto = ObjectUtil.readValue(value, new TypeReference<>() {});
+      TsCustomerDto tsCustomerDto = ObjectUtil.readValue(value, new TypeReference<>() {
+      });
 
       List<CustomerDto> customerDtos =
           crmCrudClient.findCustomersByMobilePhone(tsCustomerDto.getPhone());
@@ -206,81 +211,74 @@ public class WebHookService extends AbstractService {
   }
 
   private List<CustomerReferenceDto> extractReferences(TsCustomerDto tsCustomerDto) {
-    return Stream.of(
-            tsCustomerDto.getLicenses().stream()
-                .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
-                .map(
-                    l ->
-                        new CustomerReferenceDto(
-                            Customers.References.PAPER_LICENSE,
-                            toStorageSlug(l.getPublicURL()),
-                            l.getPublicURL()))
-                .toList(),
-            tsCustomerDto.getPharmacyEligibilityLicense().stream()
-                .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
-                .map(
-                    l ->
-                        new CustomerReferenceDto(
-                            Customers.References.PAPER_PHARMACY_ELIGIBILITY_LICENSE,
-                            toStorageSlug(l.getPublicURL()),
-                            l.getPublicURL()))
-                .toList(),
-            tsCustomerDto.getExaminationAndTreatmentLicense().stream()
-                .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
-                .map(
-                    l ->
-                        new CustomerReferenceDto(
-                            Customers.References.PAPER_EXAMINATION_TREATMENT_LICENSE,
-                            toStorageSlug(l.getPublicURL()),
-                            l.getPublicURL()))
-                .toList(),
-            tsCustomerDto.getGpp().stream()
-                .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
-                .map(
-                    l ->
-                        new CustomerReferenceDto(
-                            Customers.References.PAPER_GPP,
-                            toStorageSlug(l.getPublicURL()),
-                            l.getPublicURL()))
-                .toList(),
-            tsCustomerDto.getGdp().stream()
-                .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
-                .map(
-                    l ->
-                        new CustomerReferenceDto(
-                            Customers.References.PAPER_GDP,
-                            toStorageSlug(l.getPublicURL()),
-                            l.getPublicURL()))
-                .toList(),
-            tsCustomerDto.getGsp().stream()
-                .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
-                .map(
-                    l ->
-                        new CustomerReferenceDto(
-                            Customers.References.PAPER_GSP,
-                            toStorageSlug(l.getPublicURL()),
-                            l.getPublicURL()))
-                .toList())
-        .flatMap(List::stream)
-        .toList();
-  }
+    List<CustomerReferenceDto> referenceDtos =
+        Stream.of(
+                tsCustomerDto.getLicenses().stream()
+                    .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
+                    .map(
+                        l ->
+                            new CustomerReferenceDto(
+                                Customers.References.PAPER_LICENSE,
+                                l.getPublicURL(),
+                                l.getPublicURL()))
+                    .toList(),
+                tsCustomerDto.getPharmacyEligibilityLicense().stream()
+                    .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
+                    .map(
+                        l ->
+                            new CustomerReferenceDto(
+                                Customers.References.PAPER_PHARMACY_ELIGIBILITY_LICENSE,
+                                l.getPublicURL(),
+                                l.getPublicURL()))
+                    .toList(),
+                tsCustomerDto.getExaminationAndTreatmentLicense().stream()
+                    .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
+                    .map(
+                        l ->
+                            new CustomerReferenceDto(
+                                Customers.References.PAPER_EXAMINATION_TREATMENT_LICENSE,
+                                l.getPublicURL(),
+                                l.getPublicURL()))
+                    .toList(),
+                tsCustomerDto.getGpp().stream()
+                    .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
+                    .map(
+                        l ->
+                            new CustomerReferenceDto(
+                                Customers.References.PAPER_GPP, l.getPublicURL(), l.getPublicURL()))
+                    .toList(),
+                tsCustomerDto.getGdp().stream()
+                    .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
+                    .map(
+                        l ->
+                            new CustomerReferenceDto(
+                                Customers.References.PAPER_GDP, l.getPublicURL(), l.getPublicURL()))
+                    .toList(),
+                tsCustomerDto.getGsp().stream()
+                    .filter(l -> StringUtil.isNotEmpty(l.getPublicURL()))
+                    .map(
+                        l ->
+                            new CustomerReferenceDto(
+                                Customers.References.PAPER_GSP, l.getPublicURL(), l.getPublicURL()))
+                    .toList())
+            .flatMap(List::stream)
+            .toList();
 
-  private String toStorageSlug(String url) {
-    try {
-      FileDto fileDto = storageClient.uploadFileFromUrl(url);
-      return fileDto.getSlug();
-    } catch (Exception e) {
-      LOGGER.error(
-          "Ignore ts upload file from url {} failed with error: {}", url, e.getMessage(), e);
-      return "";
-    }
+    List<String> refImageUrls = referenceDtos.stream().map(CustomerReferenceDto::getValue).toList();
+    List<FileDto> fileDtos = storageClient.uploadFileFromUrls(refImageUrls);
+    Map<String, String> refImages =
+        fileDtos.stream().collect(Collectors.toMap(FileDto::getSource, FileDto::getSlug));
+
+    referenceDtos.forEach(refDto -> refDto.setValue(refImages.get(refDto.getValue())));
+    return referenceDtos;
   }
 
   @KafkaListener(topics = Topics.VOIP24H_CALL_LOGS_UPDATE, groupId = "voip24h-group")
   public void handleUpdateCallLogMessage(ConsumerRecord<String, String> message) {
     String rawValue = message.value();
     LOGGER.info("Received {} payload: {}", "CALLLOG", rawValue);
-    ViCallLogDto viCallLogDto = ObjectUtil.readValue(rawValue, new TypeReference<>() {});
+    ViCallLogDto viCallLogDto = ObjectUtil.readValue(rawValue, new TypeReference<>() {
+    });
     reportCrudClient.syncAllCallLogs(List.of(viCallLogDto));
   }
 
@@ -288,7 +286,8 @@ public class WebHookService extends AbstractService {
   public void handleWebsiteCreateOrderMessage(ConsumerRecord<String, String> message) {
     String value = message.value();
     LOGGER.info("Received {} payload: {}", "WEBSITE duocphamvietnhat", value);
-    FastMap order = ObjectUtil.readValue(value, new TypeReference<>() {});
+    FastMap order = ObjectUtil.readValue(value, new TypeReference<>() {
+    });
 
     processWebsiteCreateOrder(order.getMap("data"));
   }
@@ -387,11 +386,12 @@ public class WebHookService extends AbstractService {
   }
 
   private void validatePayload(String type, String payload) {
-    PayloadDto<?> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {});
+    PayloadDto<?> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {
+    });
     if (payloadDto.getId() == null
         || ListUtil.isEmpty(payloadDto.getNotifications())
         || payloadDto.getNotifications().stream()
-            .anyMatch(notification -> ListUtil.isEmpty(notification.getData()))) {
+        .anyMatch(notification -> ListUtil.isEmpty(notification.getData()))) {
       LOGGER.error("Received {} payload in mal-format", type);
 
       throw new BadRequestException("Invalid payload");
@@ -400,7 +400,8 @@ public class WebHookService extends AbstractService {
 
   public void processOrder(String payload) {
     LOGGER.info("Received {} payload: {}", "ORDER", payload);
-    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {});
+    PayloadDto<OrderHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {
+    });
     validatePayload("ORDER", payload);
     payloadDto
         .getNotifications()
@@ -416,6 +417,7 @@ public class WebHookService extends AbstractService {
                               ObjectUtil.writeValueAsString(orderDto));
                           try {
                             // fuk kiot, send missing data, have to call to web to sync
+                            // missing product detail, maybe
                             kiotvietServiceClient.syncOrder(orderDto.getCode());
 
                             // process order hook to update customer relationship
@@ -461,7 +463,8 @@ public class WebHookService extends AbstractService {
   }
 
   public void processInvoice(String payload) {
-    PayloadDto<InvoiceHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {});
+    PayloadDto<InvoiceHookDto> payloadDto = ObjectUtil.readValue(payload, new TypeReference<>() {
+    });
     validatePayload("invoice", payload);
     payloadDto
         .getNotifications()
@@ -535,14 +538,9 @@ public class WebHookService extends AbstractService {
   }
 
   public void manualSync(Integer limit) {
-    //    cacheService.preventTooManyRequest("manualSync", 30);
     List<KvOrderDto> manualSyncOrders = kiotvietServiceClient.findAllManualSync(limit);
     if (ListUtil.isNotEmpty(manualSyncOrders)) {
-      List<String> orderCodes =
-          manualSyncOrders.stream()
-              .filter(o -> o.getStatus().equals(KvOrders.CONFIRMED))
-              .map(KvOrderDto::getCode)
-              .toList();
+      List<String> orderCodes = manualSyncOrders.stream().map(KvOrderDto::getCode).toList();
       List<String> invoiceCodes =
           manualSyncOrders.stream()
               .filter(o -> o.getStatus().equals(KvOrders.COMPLETED))
@@ -556,7 +554,7 @@ public class WebHookService extends AbstractService {
   }
 
   // branch id không cần do lấy default bên kiotviet service rồi
-  private void syncOrdersIfNeed(Long branchId, List<String> orderCodes) {
+  public void syncOrdersIfNeed(Long branchId, List<String> orderCodes) {
     List<String> needToSyncOrderCodes =
         wmsCrudClient.findNotExistedOrderFromList(branchId, orderCodes);
     needToSyncOrderCodes.forEach(

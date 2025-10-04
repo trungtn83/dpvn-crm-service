@@ -42,6 +42,19 @@ public interface WmsCrudClient {
    * page: int
    * pageSize: int
    */
+  @PostMapping("/order/find-by-options")
+  PagingResponse<OrderDto> findOrdersByOptions(@RequestBody FastMap body);
+
+  /**
+   * code: String
+   * sellerId: Long -> idf
+   * customerId: Long -> idf
+   * statuses: List<String>
+   * from: String -> yyyy-MM-dd
+   * to: String -> yyyy-MM-dd
+   * page: int
+   * pageSize: int
+   */
   @PostMapping("/invoice/find-by-options")
   PagingResponse<InvoiceDto> findInvoicesByOptions(@RequestBody FastMap body);
 

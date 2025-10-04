@@ -1,26 +1,30 @@
-package com.dpvn.crm.wms.invoice;
+package com.dpvn.crm.wms.order;
 
+import com.dpvn.crm.client.MisaAmisServiceClient;
 import com.dpvn.crm.client.WmsCrudClient;
 import com.dpvn.crm.customer.CustomerService;
 import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.service.AbstractService;
 import com.dpvn.shared.util.FastMap;
-import com.dpvn.wmscrudservice.domain.dto.InvoiceDto;
-import java.util.List;
+import com.dpvn.wmscrudservice.domain.dto.OrderDto;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
-public class InvoiceService extends AbstractService {
+public class OrderService extends AbstractService {
   private final WmsCrudClient wmsCrudClient;
   private final CustomerService customerService;
+  private final MisaAmisServiceClient misaAmisServiceClient;
 
-  public InvoiceService(WmsCrudClient wmsCrudClient, CustomerService customerService) {
+  public OrderService(WmsCrudClient wmsCrudClient, CustomerService customerService, MisaAmisServiceClient misaAmisServiceClient) {
     this.wmsCrudClient = wmsCrudClient;
     this.customerService = customerService;
+    this.misaAmisServiceClient = misaAmisServiceClient;
   }
 
-  public PagingResponse<InvoiceDto> findInvoicesByOptions(
+  public PagingResponse<OrderDto> findOrdersByOptions(
       String filterText,
       Long sellerId,
       Long customerId,
@@ -28,7 +32,7 @@ public class InvoiceService extends AbstractService {
       int page,
       int pageSize) {
     CustomerDto customerDto = customerService.findCustomerById(customerId);
-    return wmsCrudClient.findInvoicesByOptions(
+    return wmsCrudClient.findOrdersByOptions(
         FastMap.create()
             .add("code", filterText)
             .add("sellerId", sellerId)
@@ -36,5 +40,9 @@ public class InvoiceService extends AbstractService {
             .add("statuses", statuses)
             .add("page", page)
             .add("pageSize", pageSize));
+  }
+
+  public List<String> showOrderInvoicesFromMisa(List<FastMap> refs) {
+    return misaAmisServiceClient.getInvoiceShow(refs);
   }
 }

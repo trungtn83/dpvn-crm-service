@@ -153,7 +153,8 @@ public class WebHookHandlerService extends AbstractService {
   }
 
   /**
-   * Khi Invoice là completed: hình như chưa cần làm gì
+   * Khi Invoice là complete
+   * - trigger việc xuát hóa đơn tự động cho khách lẻ (nếu có)
    */
   public void handleCompletedInvoice(
       UserDto sale, CustomerDto customer, String code, Instant purchaseDate) {
