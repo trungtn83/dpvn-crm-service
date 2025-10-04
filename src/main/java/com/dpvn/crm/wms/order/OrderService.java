@@ -8,9 +8,8 @@ import com.dpvn.shared.domain.dto.PagingResponse;
 import com.dpvn.shared.service.AbstractService;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.wmscrudservice.domain.dto.OrderDto;
-import org.springframework.stereotype.Service;
-
 import java.util.List;
+import org.springframework.stereotype.Service;
 
 @Service
 public class OrderService extends AbstractService {
@@ -18,7 +17,10 @@ public class OrderService extends AbstractService {
   private final CustomerService customerService;
   private final MisaAmisServiceClient misaAmisServiceClient;
 
-  public OrderService(WmsCrudClient wmsCrudClient, CustomerService customerService, MisaAmisServiceClient misaAmisServiceClient) {
+  public OrderService(
+      WmsCrudClient wmsCrudClient,
+      CustomerService customerService,
+      MisaAmisServiceClient misaAmisServiceClient) {
     this.wmsCrudClient = wmsCrudClient;
     this.customerService = customerService;
     this.misaAmisServiceClient = misaAmisServiceClient;
