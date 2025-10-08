@@ -262,12 +262,17 @@ public class WebHookService extends AbstractService {
             .toList();
 
     List<String> refImageUrls = referenceDtos.stream().map(CustomerReferenceDto::getValue).toList();
-    List<FileDto> fileDtos = storageClient.uploadFileFromUrls(refImageUrls);
-    Map<String, String> refImages =
-        fileDtos.stream().collect(Collectors.toMap(FileDto::getSource, FileDto::getSlug));
+    if (ListUtil.isNotEmpty(refImageUrls)) {
+      List<FileDto> fileDtos =
+          storageClient.uploadFileFromUrls(
+              refImageUrls.stream().map(url -> FastMap.create().add("url", url)).toList());
+      Map<String, String> refImages =
+          fileDtos.stream().collect(Collectors.toMap(FileDto::getSource, FileDto::getSlug));
 
-    referenceDtos.forEach(refDto -> refDto.setValue(refImages.get(refDto.getValue())));
-    return referenceDtos;
+      referenceDtos.forEach(refDto -> refDto.setValue(refImages.get(refDto.getValue())));
+      return referenceDtos;
+    }
+    return List.of();
   }
 
   @KafkaListener(topics = Topics.VOIP24H_CALL_LOGS_UPDATE, groupId = "voip24h-group")

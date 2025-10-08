@@ -1,5 +1,6 @@
 package com.dpvn.crm.client;
 
+import com.dpvn.shared.util.FastMap;
 import com.dpvn.storageservice.domain.FileDto;
 import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -15,5 +16,5 @@ public interface StorageClient {
   FileDto uploadFileFromUrl(@RequestBody String url);
 
   @PostMapping("/file/upload-from-urls")
-  List<FileDto> uploadFileFromUrls(@RequestBody List<String> urls);
+  List<FileDto> uploadFileFromUrls(@RequestBody List<FastMap> urls);
 }
