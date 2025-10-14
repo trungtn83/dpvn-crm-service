@@ -7,6 +7,7 @@ import com.dpvn.crmcrudservice.domain.dto.InteractionDto;
 import com.dpvn.shared.util.FastMap;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
@@ -24,7 +25,7 @@ public class InteractionService {
   }
 
   public FastMap findInteractionsByOptions(
-      Long userId, Long customerId, Long campaignId, boolean isLite) {
+      Long userId, Long customerId, Long campaignId, boolean isLite, int page, int pageSize) {
     FastMap myParams = FastMap.create().add("customerId", customerId).add("campaignId", campaignId);
     if (!userService.isGod(userId)) {
       myParams.add("userId", userId);
@@ -51,8 +52,9 @@ public class InteractionService {
 
     FastMap result = FastMap.create().add("interactions", interactionDtos);
     if (!isLite) {
-      List<Long> userIds = interactionDtos.stream().map(InteractionDto::getInteractBy).toList();
-      result.add("users", userService.findUsersByIdsMapByIds(userIds));
+      Set<Long> userIds =
+          interactionDtos.stream().map(InteractionDto::getInteractBy).collect(Collectors.toSet());
+      result.add("users", userService.findUsersByIdsMapByIds(userIds.stream().toList()));
     }
 
     return result;

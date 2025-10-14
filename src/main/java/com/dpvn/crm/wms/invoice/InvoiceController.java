@@ -23,8 +23,11 @@ public class InvoiceController {
   }
 
   /**
-   * @param body sellerId: Long customerId: Long statuses: List<String> page: int pageSize: int
-   * @return
+   * sellerId: Long
+   * customerId: Long
+   * statuses: List<String>
+   * page: int
+   * pageSize: int
    */
   @PostMapping("/find-by-options")
   public PagingResponse<InvoiceDto> findInvoicesByOptions(@RequestBody FastMap body) {
