@@ -12,9 +12,6 @@ import org.springframework.web.bind.annotation.RequestBody;
     contextId = "storage-service-client",
     url = "${storage-service.url}")
 public interface StorageClient {
-  @PostMapping("/file/upload-from-url")
-  FileDto uploadFileFromUrl(@RequestBody String url);
-
   @PostMapping("/file/upload-from-urls")
   List<FileDto> uploadFileFromUrls(@RequestBody List<FastMap> urls);
 }

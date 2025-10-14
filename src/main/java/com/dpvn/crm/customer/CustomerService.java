@@ -638,4 +638,9 @@ public class CustomerService extends AbstractService {
       return FastMap.create().add("customer", customerDto).add("owner", owner);
     }
   }
+
+  @Deprecated
+  public void fixCustomerPaperDocuments() {
+    crmCrudClient.fixCustomerPaperDocuments();
+  }
 }

@@ -331,4 +331,10 @@ public class CustomerController {
   public FastMap getCustomerByMobilePhoneStatus(@PathVariable String mobilePhone) {
     return customerService.getCustomerByMobilePhoneStatus(mobilePhone);
   }
+
+  @Deprecated
+  @PostMapping("/customer-reference/fix-missing-slug")
+  public void fixCustomerPaperDocuments() {
+    customerService.fixCustomerPaperDocuments();
+  }
 }

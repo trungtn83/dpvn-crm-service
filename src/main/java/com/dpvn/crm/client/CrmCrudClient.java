@@ -294,4 +294,8 @@ public interface CrmCrudClient {
    */
   @PostMapping("/report/task/by-sellers")
   Map<Long, List<TaskBySeller>> reportTasksBySellers(@RequestBody FastMap body);
+
+  @Deprecated
+  @PostMapping("/customer/customer-reference/fix-missing-slug")
+  void fixCustomerPaperDocuments();
 }
