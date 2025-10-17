@@ -27,8 +27,6 @@ import com.dpvn.shared.util.ObjectUtil;
 import com.dpvn.shared.util.StringUtil;
 import com.dpvn.wmscrudservice.domain.constant.Invoices;
 import com.dpvn.wmscrudservice.domain.constant.Orders;
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -39,6 +37,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.springframework.stereotype.Service;
 
 @Service
 public class CustomerService extends AbstractService {
@@ -281,8 +280,8 @@ public class CustomerService extends AbstractService {
             customerId == null
                 ? SaleCustomers.Reason.BY_MY_HAND
                 : (isActive
-                ? SaleCustomers.Reason.BY_MY_HAND_FROM_GOLDMINE
-                : SaleCustomers.Reason.BY_MY_HAND_FROM_SANDBANK);
+                    ? SaleCustomers.Reason.BY_MY_HAND_FROM_GOLDMINE
+                    : SaleCustomers.Reason.BY_MY_HAND_FROM_SANDBANK);
         saleCustomerDto.setReasonId(reasonId);
         saleCustomerDto.setReasonRef(userId.toString());
         saleCustomerDto.setReasonNote("Tạo khách hàng từ màn hình tạo mới");
@@ -649,8 +648,7 @@ public class CustomerService extends AbstractService {
     crmCrudClient.fixCustomerPaperDocuments();
   }
 
-  private void forceAssignCustomerToSale(
-      Long customerId, Long saleId, Long loginUserId) {
+  private void forceAssignCustomerToSale(Long customerId, Long saleId, Long loginUserId) {
     UserDto loginUserDto = userService.findById(loginUserId);
     if (!UserUtil.isGod(loginUserDto)) {
       throw new BadRequestException("Bạn khônng có quyền làm việc này!!!");

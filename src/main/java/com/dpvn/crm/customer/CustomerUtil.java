@@ -6,13 +6,11 @@ import com.dpvn.crmcrudservice.domain.dto.CustomerDto;
 import com.dpvn.crmcrudservice.domain.dto.SaleCustomerDto;
 import com.dpvn.shared.util.FastMap;
 import com.dpvn.shared.util.ListUtil;
-
 import java.util.Comparator;
 import java.util.List;
 
 public class CustomerUtil {
-  private CustomerUtil() {
-  }
+  private CustomerUtil() {}
 
   public static FastMap getCustomerOwner(
       CustomerDto customerDto, List<SaleCustomerDto> saleCustomerDtos) {
@@ -24,8 +22,8 @@ public class CustomerUtil {
             .filter(
                 s ->
                     s.getRelationshipType() == 1 && SaleCustomers.Reason.INVOICE == s.getReasonId())
-            .max(Comparator.comparing(SaleCustomerDto::getModifiedDate)).
-            orElse(null);
+            .max(Comparator.comparing(SaleCustomerDto::getModifiedDate))
+            .orElse(null);
     if (treasure != null) {
       return FastMap.create()
           .add("ownerId", List.of(treasure.getSaleId()))
@@ -67,10 +65,10 @@ public class CustomerUtil {
     boolean isViewable =
         ListUtil.isEmpty(saleIds) // is god by role or is account by department
             || (List.of(Customers.Owner.SANDBANK, Customers.Owner.GOLDMINE)
-            .contains(ownerName)) // is in bãi cát hoặc mỏ vàng
+                .contains(ownerName)) // is in bãi cát hoặc mỏ vàng
             || ListUtil.isEmpty(ownerId) // not belong to anyone
             || ownerId.stream()
-            .anyMatch(saleIds::contains); // belong to me or my transferring member
+                .anyMatch(saleIds::contains); // belong to me or my transferring member
     return owner.add("isViewable", isViewable);
   }
 }
