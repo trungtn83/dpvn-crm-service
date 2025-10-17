@@ -27,7 +27,10 @@ import com.dpvn.shared.util.ObjectUtil;
 import com.dpvn.shared.util.StringUtil;
 import com.dpvn.wmscrudservice.domain.constant.Invoices;
 import com.dpvn.wmscrudservice.domain.constant.Orders;
+import org.springframework.stereotype.Service;
+
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -36,7 +39,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.springframework.stereotype.Service;
 
 @Service
 public class CustomerService extends AbstractService {
@@ -279,13 +281,13 @@ public class CustomerService extends AbstractService {
             customerId == null
                 ? SaleCustomers.Reason.BY_MY_HAND
                 : (isActive
-                    ? SaleCustomers.Reason.BY_MY_HAND_FROM_GOLDMINE
-                    : SaleCustomers.Reason.BY_MY_HAND_FROM_SANDBANK);
+                ? SaleCustomers.Reason.BY_MY_HAND_FROM_GOLDMINE
+                : SaleCustomers.Reason.BY_MY_HAND_FROM_SANDBANK);
         saleCustomerDto.setReasonId(reasonId);
         saleCustomerDto.setReasonRef(userId.toString());
         saleCustomerDto.setReasonNote("Tạo khách hàng từ màn hình tạo mới");
       } else {
-        // available time is set in FE side
+        // available time is set in BE side
         saleCustomerDto.setReasonId(SaleCustomers.Reason.LEADER);
         saleCustomerDto.setReasonRef(userId.toString());
         saleCustomerDto.setReasonNote("Được phân công khi tạo mới khách hàng");
@@ -312,7 +314,10 @@ public class CustomerService extends AbstractService {
             .map(CustomerReferenceDto::getValue)
             .toList());
     CustomerDto result = crmCrudClient.updateExistedCustomer(customerId, customerDto);
-
+    Long saleId = customerDto.getLong("sale");
+    if (saleId != null) {
+      forceAssignCustomerToSale(customerId, saleId, userId);
+    }
     assignCustomerToSaleInUpsertScreen(
         userId, customerId, result, extractSaleCustomerFromBody(customerDto), isActive);
   }
@@ -642,5 +647,27 @@ public class CustomerService extends AbstractService {
   @Deprecated
   public void fixCustomerPaperDocuments() {
     crmCrudClient.fixCustomerPaperDocuments();
+  }
+
+  private void forceAssignCustomerToSale(
+      Long customerId, Long saleId, Long loginUserId) {
+    UserDto loginUserDto = userService.findById(loginUserId);
+    if (!UserUtil.isGod(loginUserDto)) {
+      throw new BadRequestException("Bạn khônng có quyền làm việc này!!!");
+    }
+
+    UserDto saleUserDto = userService.findById(saleId);
+    if (saleUserDto == null || !saleUserDto.getActive() || saleUserDto.getDeleted()) {
+      throw new BadRequestException("Người dùng " + saleId + " không tồn tại hoặc đã nghỉ việc!!!");
+    }
+
+    Instant from = DateUtil.now().minusSeconds(1);
+    Instant to = from.plus(Globals.Customer.LIFE_TIME_TREASURE_IN_DAYS, ChronoUnit.DAYS);
+    String typeRef =
+        String.format("Force assign by (%d, %s)", loginUserDto.getId(), loginUserDto.getFullName());
+    SaleCustomerDto saleCustomerDto =
+        webHookHandlerService.generateAssignCustomerToSaleWithTypeInDays(
+            saleUserDto.getId(), customerId, SaleCustomers.Reason.INVOICE, typeRef, from, to);
+    crmCrudClient.createNewSaleCustomer(saleCustomerDto);
   }
 }

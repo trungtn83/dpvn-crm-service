@@ -166,7 +166,7 @@ public class WebHookHandlerService extends AbstractService {
         sale.getId(), customer.getId(), SaleCustomers.Reason.INVOICE, code);
   }
 
-  private SaleCustomerDto generateAssignCustomerToSaleWithTypeInDays(
+  public SaleCustomerDto generateAssignCustomerToSaleWithTypeInDays(
       Long saleId, Long customerId, int type, String typeRef, Instant fromDate, Instant toDate) {
     SaleCustomerDto saleCustomerDto = new SaleCustomerDto();
     saleCustomerDto.setCustomerId(customerId);

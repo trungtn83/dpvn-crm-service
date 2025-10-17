@@ -17,18 +17,6 @@ public class MisaAmisFeignClientConfig {
   public RequestInterceptor requestInterceptor() {
     return requestTemplate -> {
       requestTemplate.header("X-SELLER-ID", "2010");
-
-      // Log request headers
-      LOGGER.info("Request URL: {}", requestTemplate.url());
-      LOGGER.info("Request Method: {}", requestTemplate.method());
-      LOGGER.info("Request Headers: {}", requestTemplate.headers());
-
-      // Log request body
-      if (requestTemplate.body() != null && requestTemplate.body().length > 0) {
-        LOGGER.info("Request Body: {}", new String(requestTemplate.body()));
-      } else {
-        LOGGER.info("Request Body: N/A");
-      }
     };
   }
 
